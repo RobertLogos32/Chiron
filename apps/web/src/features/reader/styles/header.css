@@ -1,0 +1,130 @@
+.pdf-header {
+  position: absolute;
+  top: max(18px, env(safe-area-inset-top));
+  left: max(20px, env(safe-area-inset-left));
+  right: max(20px, env(safe-area-inset-right));
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  pointer-events: none;
+}
+
+.pdf-header button,
+.pdf-header input,
+.pdf-header .theme-switch,
+.pdf-page-navigation,
+.pdf-header .zoom-controls {
+  pointer-events: auto;
+}
+
+.pdf-file-controls,
+.pdf-view-controls,
+.pdf-file-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pdf-view-controls {
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.pdf-open-button,
+.pdf-fit-button,
+.pdf-page-navigation {
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel);
+  box-shadow: 0 3px 14px #00000008;
+}
+
+.pdf-open-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 13px;
+  font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pdf-fit-button {
+  width: 40px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.pdf-open-button:hover,
+.pdf-fit-button:hover {
+  color: var(--accent);
+  background: var(--hover);
+}
+
+.pdf-file-name {
+  font-size: 11px;
+  color: var(--muted);
+  gap: 7px;
+}
+
+.pdf-file-name svg {
+  flex-shrink: 0;
+}
+
+.pdf-file-name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pdf-page-navigation {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px;
+}
+
+.pdf-page-navigation button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 30px;
+  border-radius: 5px;
+  color: var(--muted);
+}
+
+.pdf-page-navigation button:hover:enabled {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.pdf-page-navigation > div {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 3px;
+  font-size: 11px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.pdf-page-navigation input {
+  min-width: 2ch;
+  padding: 4px 0;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  text-align: center;
+}
+
+.pdf-page-navigation span {
+  color: var(--muted);
+}

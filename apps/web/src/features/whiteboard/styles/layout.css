@@ -1,0 +1,46 @@
+.whiteboard {
+  height: 100dvh;
+  overflow: hidden;
+  position: relative;
+  color: var(--text);
+  background: var(--canvas);
+  --canvas: #f7f8fa;
+  --panel: #fff;
+  --border: #e1e4eb;
+  --text: #303749;
+  --muted: #7c8497;
+  --hover: #f0eff8;
+  --active: #eae7f7;
+  --accent: #5657b8;
+  --lines: #e7eaf0;
+  --dots: #d1d6e1;
+  color-scheme: light;
+}
+
+.theme-dark {
+  --canvas: #202329;
+  --panel: #292d34;
+  --border: #3c414c;
+  --text: #d2d9e7;
+  --muted: #a0a8b9;
+  --hover: #353744;
+  --active: #40394f;
+  --accent: #c0b2f4;
+  --lines: #2d323b;
+  --dots: #424955;
+  color-scheme: dark;
+}
+
+.save-error {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 15px;
+  border-radius: 7px;
+  background: var(--panel);
+  border: 1px solid #a15c62;
+  font-size: 12px;
+  color: var(--text);
+  z-index: 20;
+}

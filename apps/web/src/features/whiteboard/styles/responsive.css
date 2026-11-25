@@ -1,0 +1,138 @@
+@media (max-width: 760px) {
+  .toolbar {
+    display: grid;
+    grid-template-columns: auto auto auto;
+    column-gap: 10px;
+    row-gap: 8px;
+    justify-content: center;
+    max-width: calc(100vw - 24px);
+  }
+  .toolbar .drawing-tools {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+  .toolbar > .divider {
+    display: none;
+  }
+  .color-palette {
+    --palette-expanded: 113px;
+  }
+  .palette-inline .colors {
+    gap: 7px;
+    padding: 0 0 0 10px;
+  }
+  .palette-inline .color-button {
+    width: 15px;
+    height: 15px;
+  }
+}
+
+@media (max-width: 640px) {
+  .toolbar {
+    gap: 8px;
+    padding: 7px 8px;
+  }
+  .tool-button {
+    width: 33px;
+    height: 36px;
+  }
+  .tool-group {
+    gap: 1px;
+  }
+  .colors {
+    gap: 7px;
+  }
+  .color-button {
+    width: 15px;
+    height: 15px;
+  }
+  .size-button {
+    min-width: 64px;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 520px) {
+  .board-settings {
+    top: 12px;
+    right: 12px;
+    gap: 7px;
+    --menu-offset: 83px;
+  }
+  .toolbar {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    max-width: 345px;
+    padding: 8px 11px;
+  }
+  .toolbar-dock {
+    bottom: max(14px, env(safe-area-inset-bottom));
+  }
+  .tool-button {
+    width: 37px;
+    height: 37px;
+  }
+  .colors {
+    gap: 9px;
+  }
+  .toolbar > .divider:nth-of-type(2) {
+    display: none;
+  }
+  .size-popover {
+    left: 0;
+    transform: none;
+  }
+}
+
+@media (max-width: 380px) {
+  .board-settings {
+    gap: 6px;
+    --menu-offset: 73px;
+  }
+  .background-trigger {
+    font-size: 11px;
+    gap: 6px;
+    padding: 0 8px;
+  }
+  .theme-switch button {
+    width: 27px;
+  }
+  .zoom-controls button {
+    width: 25px;
+  }
+  .zoom-controls .zoom-level {
+    width: 38px;
+  }
+  .color-palette {
+    --palette-expanded: 99px;
+  }
+  .palette-trigger {
+    width: 28px;
+    flex-basis: 28px;
+  }
+  .palette-inline .colors {
+    gap: 6px;
+  }
+  .palette-inline .color-button {
+    width: 13px;
+    height: 13px;
+  }
+  .toolbar .history-tools .tool-button {
+    width: 31px;
+  }
+  .toolbar .size-button {
+    min-width: 58px;
+  }
+  .toolbar {
+    column-gap: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}

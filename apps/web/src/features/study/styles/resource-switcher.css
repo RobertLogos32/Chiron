@@ -1,0 +1,229 @@
+.study-resource-switcher {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.study-resource-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 28px;
+  padding: 0 4px 0 12px;
+  border: 1px solid #76899a38;
+  border-radius: 14px;
+  background: #ffffff05;
+  color: #e1e7ec;
+  text-align: left;
+  font-size: 11px;
+  line-height: 1.2;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.study-resource-trigger:hover,
+.study-resource-trigger.is-open {
+  border-color: #8aa0b366;
+  background: #ffffff09;
+}
+
+.study-resource-trigger-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.study-resource-trigger-action {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 3px 7px;
+  border: 0;
+  border-radius: 10px;
+  background: #afc4d20b;
+  color: #c1d0da;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.study-resource-trigger.is-open .study-resource-trigger-action > svg {
+  transform: rotate(180deg);
+}
+
+.study-resource-popover {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 0;
+  z-index: 65;
+  display: flex;
+  flex-direction: column;
+  width: min(340px, calc(100vw - 32px));
+  max-height: var(--switcher-max-height, 360px);
+  overflow: hidden;
+  padding: 7px;
+  border: 1px solid #46515d;
+  border-radius: 16px;
+  background: #242a31;
+  color: #e5e9ed;
+  box-shadow: 0 10px 28px #0000004d;
+  text-align: left;
+}
+
+.study-resource-popover.opens-above {
+  top: auto;
+  bottom: calc(100% + 7px);
+}
+.study-switcher-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 8px 9px 12px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.study-switcher-heading > span:last-child {
+  display: grid;
+  place-items: center;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: #353e48;
+  color: #bbc8d3;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.study-switcher-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin: 0 5px 7px;
+  padding: 0 9px;
+  border: 1px solid #3b4551;
+  border-radius: 9px;
+  background: #1c2229;
+  color: #96a5b3;
+}
+.study-switcher-search:focus-within {
+  border-color: #8da5b7;
+}
+.study-switcher-search input {
+  width: 100%;
+  min-width: 0;
+  height: 33px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  outline: none;
+  background: transparent;
+  color: #e5e9ed;
+  font-size: 12px;
+}
+.study-switcher-search input:focus-visible {
+  outline: none;
+}
+.study-switcher-search input::placeholder {
+  color: #99a6b3;
+}
+.study-switcher-options {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #566270 transparent;
+}
+.study-switcher-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 54px;
+  padding: 8px 9px;
+  border-radius: 10px;
+  text-align: left;
+}
+.study-switcher-option:hover {
+  background: #303943;
+}
+.study-switcher-option[aria-selected='true'] {
+  background: #afc4d212;
+}
+.study-switcher-item-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 31px;
+  border: 1px solid #4a5561;
+  border-radius: 5px;
+  background: #1e252c;
+  color: #a9b9c7;
+}
+.study-switcher-item-name {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.study-switcher-item-name > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+.study-switcher-item-name small {
+  color: #9aa8b6;
+  font-size: 10px;
+}
+.study-switcher-check {
+  flex-shrink: 0;
+  color: #bdd0de;
+}
+.study-switcher-empty {
+  margin: 0;
+  padding: 18px 10px;
+  color: #b0bbc5;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.study-switcher-create {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-height: 37px;
+  margin-top: 5px;
+  padding: 9px;
+  border-top: 1px solid #3b4551;
+  color: #c1d0da;
+  font-size: 11px;
+  text-align: left;
+}
+.study-switcher-create:hover {
+  background: #303943;
+}
+
+@media (max-width: 600px) {
+  .study-resource-trigger {
+    height: 26px;
+    padding: 0 3px 0 10px;
+    gap: 6px;
+    font-size: 10px;
+  }
+  .study-resource-trigger-action {
+    font-size: 9px;
+    padding: 3px 6px;
+  }
+  .study-switcher-option {
+    min-height: 56px;
+  }
+}

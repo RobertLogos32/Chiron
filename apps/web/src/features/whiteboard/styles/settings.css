@@ -1,0 +1,74 @@
+.board-settings {
+  position: absolute;
+  right: max(20px, env(safe-area-inset-right));
+  top: max(18px, env(safe-area-inset-top));
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  --menu-offset: 86px;
+}
+
+.background-select,
+.theme-switch,
+.zoom-controls {
+  height: 40px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  box-shadow: 0 3px 14px #00000008;
+}
+
+.theme-switch {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  padding: 4px;
+}
+
+.theme-switch button {
+  width: 32px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  color: var(--muted);
+}
+
+.theme-switch button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.theme-switch button.is-selected {
+  background: var(--active);
+  color: var(--accent);
+}
+
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 4px;
+}
+
+.zoom-controls button {
+  width: 28px;
+  height: 30px;
+  border-radius: 5px;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+}
+
+.zoom-controls button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.zoom-controls .zoom-level {
+  width: 43px;
+  font-size: 11px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}

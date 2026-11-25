@@ -1,0 +1,81 @@
+@media (max-width: 960px) {
+  .pdf-file-name {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .pdf-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+  }
+  .pdf-file-controls {
+    flex: 1;
+  }
+  .pdf-view-controls {
+    flex-basis: 100%;
+  }
+  .pdf-view-controls:has(> .theme-switch:only-child) {
+    flex-basis: auto;
+  }
+  .pdf-navigation-slot:empty {
+    display: none;
+  }
+  .pdf-open-button,
+  .pdf-fit-button,
+  .pdf-page-navigation,
+  .pdf-header .theme-switch,
+  .pdf-header .zoom-controls {
+    height: 36px;
+  }
+  .pdf-header .theme-switch button,
+  .pdf-header .zoom-controls button,
+  .pdf-page-navigation button {
+    height: 26px;
+  }
+  .pdf-fit-button {
+    width: 36px;
+  }
+  .pdf-empty-state {
+    inset: 68px 20px 150px;
+  }
+  .pdf-empty-symbol {
+    width: 60px;
+    height: 68px;
+    margin-bottom: 18px;
+  }
+  .pdf-empty-state h1 {
+    font-size: 21px;
+  }
+  .pdf-empty-state p {
+    margin: 10px 0 20px;
+  }
+  .pdf-error,
+  .pdf-viewer .save-error {
+    top: 113px;
+  }
+  .pdf-render-status {
+    bottom: 140px;
+    left: 12px;
+  }
+}
+
+@media (max-height: 480px) {
+  .pdf-empty-symbol {
+    display: none;
+  }
+  .pdf-empty-state p {
+    margin-bottom: 15px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pdf-empty-symbol.is-loading {
+    animation: none;
+  }
+}

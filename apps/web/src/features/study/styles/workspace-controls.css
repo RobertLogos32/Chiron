@@ -1,0 +1,210 @@
+.study-workspace {
+  position: relative;
+}
+.study-workspace-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #c4d0da;
+  opacity: 0.55;
+  transition: opacity 180ms ease;
+}
+.study-workspace-back > svg {
+  flex-shrink: 0;
+}
+.study-workspace-back:hover,
+.study-workspace-back:focus-visible {
+  opacity: 1;
+}
+.is-editor .study-nav-reveal {
+  top: 0;
+}
+
+.study-workspace-tools {
+  position: absolute;
+  right: 16px;
+  bottom: max(122px, calc(env(safe-area-inset-bottom) + 122px));
+  z-index: 45;
+  width: 40px;
+  padding: 3px;
+  border: 1px solid #66728066;
+  border-radius: 10px;
+  background: #272d35cc;
+  backdrop-filter: blur(6px);
+  color: #c6d0d9;
+  opacity: 0.5;
+  transition:
+    width 200ms ease,
+    opacity 180ms ease,
+    background-color 180ms ease;
+}
+.study-workspace-tools:hover,
+.study-workspace-tools:has(:focus-visible) {
+  width: 150px;
+  opacity: 1;
+  background: #272d35f5;
+}
+.study-workspace-tools .study-view-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.study-workspace-tools .study-view-tabs button,
+.study-workspace-tools .study-workspace-settings {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  width: 100%;
+  height: 32px;
+  padding: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #b3c0cc;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.study-workspace-tools .study-view-tabs button > svg,
+.study-workspace-tools .study-workspace-settings > svg {
+  display: block;
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin: 0 8px;
+}
+.study-workspace-tools .study-view-tabs button > span,
+.study-workspace-tools .study-workspace-settings > span {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  text-align: right;
+  transition:
+    max-width 200ms ease,
+    opacity 140ms ease;
+}
+.study-workspace-tools:hover .study-view-tabs button > span,
+.study-workspace-tools:has(:focus-visible) .study-view-tabs button > span,
+.study-workspace-tools:hover .study-workspace-settings > span,
+.study-workspace-tools:has(:focus-visible) .study-workspace-settings > span {
+  max-width: 108px;
+  opacity: 1;
+}
+.study-workspace-tools .study-view-tabs button.is-selected {
+  background: #8297aa26;
+  color: #eef3f7;
+}
+.study-workspace-tools .study-view-tabs button:hover,
+.study-workspace-tools .study-workspace-settings:hover {
+  background: #ffffff0c;
+  color: #eef3f7;
+}
+.study-workspace-tools .study-workspace-settings {
+  height: 36px;
+  margin-top: 5px;
+  border-top: 1px solid #66728044;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.study-workspace .board-settings {
+  --menu-offset: 0px;
+}
+.study-workspace .background-select {
+  width: 40px;
+  flex-shrink: 0;
+  opacity: 0.65;
+  transition:
+    width 200ms ease,
+    opacity 180ms ease;
+}
+.study-workspace .background-select:hover,
+.study-workspace .background-select:has(:focus-visible),
+.study-workspace .background-select:has(.background-trigger.is-open) {
+  width: 140px;
+  opacity: 1;
+}
+.study-workspace .background-trigger {
+  width: 100%;
+  padding: 0 10px;
+  gap: 0;
+  overflow: hidden;
+}
+.study-workspace .background-trigger .background-trigger-label {
+  display: block;
+  width: 0;
+  min-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  margin-left: 0;
+  transition:
+    width 200ms ease,
+    margin-left 200ms ease,
+    opacity 140ms ease;
+}
+.study-workspace .background-trigger > svg {
+  width: 0;
+  min-width: 0;
+  opacity: 0;
+  margin-left: 0;
+  transition:
+    width 200ms ease,
+    margin-left 200ms ease,
+    opacity 140ms ease,
+    transform 150ms ease;
+}
+.study-workspace .background-select:hover .background-trigger-label,
+.study-workspace .background-select:has(:focus-visible) .background-trigger-label,
+.study-workspace .background-select:has(.is-open) .background-trigger-label {
+  width: 80px;
+  margin-left: 9px;
+  opacity: 1;
+}
+.study-workspace .background-select:hover .background-trigger > svg,
+.study-workspace .background-select:has(:focus-visible) .background-trigger > svg,
+.study-workspace .background-select:has(.is-open) .background-trigger > svg {
+  width: 12px;
+  margin-left: 7px;
+  opacity: 1;
+}
+
+@media (max-width: 600px) {
+  .study-workspace-tools {
+    right: 12px;
+    bottom: max(142px, calc(env(safe-area-inset-bottom) + 142px));
+  }
+}
+
+@media (hover: none) {
+  .study-workspace-tools {
+    opacity: 0.8;
+  }
+  .study-workspace-back,
+  .study-workspace .background-select {
+    opacity: 0.85;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .study-workspace-tools,
+  .study-workspace-tools span,
+  .study-workspace-back,
+  .study-workspace .background-select,
+  .study-workspace .background-trigger span,
+  .study-workspace .background-trigger > svg {
+    transition: none;
+  }
+}

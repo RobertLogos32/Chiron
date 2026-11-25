@@ -1,0 +1,71 @@
+.pdf-viewer {
+  --pdf-paper: #fff;
+}
+
+.pdf-file-input {
+  display: none;
+}
+
+.pdf-workspace {
+  isolation: isolate;
+}
+
+.pdf-paper {
+  position: absolute;
+  overflow: hidden;
+  background: var(--pdf-paper);
+  box-shadow:
+    0 0 0 1px #0000000a,
+    0 8px 40px #00000014;
+  pointer-events: none;
+}
+
+.theme-dark .pdf-paper {
+  box-shadow:
+    0 0 0 1px var(--border),
+    0 8px 40px #00000026;
+}
+
+.pdf-paper canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pdf-workspace .konvajs-content canvas:first-child {
+  mix-blend-mode: multiply;
+}
+
+.pdf-workspace .eraser-cursor {
+  border-color: #303749;
+  background: #3037490d;
+}
+
+.pdf-workspace .text-editor {
+  background: var(--pdf-paper);
+}
+
+.pdf-render-status {
+  position: absolute;
+  bottom: 94px;
+  left: 24px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel);
+  font-size: 11px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

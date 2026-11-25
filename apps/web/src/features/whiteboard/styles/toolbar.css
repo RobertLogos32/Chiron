@@ -1,0 +1,127 @@
+.toolbar-dock {
+  position: fixed;
+  bottom: max(22px, env(safe-area-inset-bottom));
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  pointer-events: none;
+}
+
+.selection-actions {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 38px;
+  padding: 4px 6px 4px 14px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 3px 18px #00000014;
+  font-size: 11px;
+  pointer-events: auto;
+}
+
+.selection-actions kbd {
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 9px;
+  padding: 3px 5px;
+}
+
+.selection-actions button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 28px;
+  border-radius: 5px;
+  color: var(--muted);
+}
+
+.selection-actions button:hover {
+  color: #d88d9a;
+  background: var(--hover);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 4px 25px #00000012;
+  pointer-events: auto;
+}
+
+.divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.size-control {
+  position: relative;
+}
+
+.size-button {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  font-size: 11px;
+  color: var(--text);
+  min-width: 77px;
+  padding: 0 4px;
+  border-radius: 5px;
+}
+
+.size-button:hover {
+  background: var(--hover);
+}
+
+.size-dot {
+  background: var(--muted);
+  border-radius: 50%;
+}
+
+.size-button small {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.size-popover {
+  position: absolute;
+  bottom: calc(100% + 20px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
+  background: var(--panel);
+  box-shadow: 0 6px 30px #00000018;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 15px;
+}
+
+.size-popover input {
+  display: block;
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.dismiss-popover {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  cursor: default;
+}

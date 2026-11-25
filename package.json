@@ -1,0 +1,12 @@
+{
+  "name": "chiron",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "npm --prefix apps/web run dev",
+    "build": "npm --prefix apps/web run build",
+    "preview": "npm --prefix apps/web run preview",
+    "test": "npm --prefix apps/web test",
+    "format:check": "npm --prefix apps/web run format:check"
+  }
+}

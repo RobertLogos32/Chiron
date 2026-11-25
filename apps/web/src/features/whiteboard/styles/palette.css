@@ -1,0 +1,95 @@
+.colors {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 3px;
+}
+
+.color-button {
+  background: var(--color);
+  height: 17px;
+  width: 17px;
+  border-radius: 50%;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.color-button.is-selected::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 1px solid var(--color);
+  border-radius: 50%;
+}
+
+.color-button:hover {
+  box-shadow: 0 0 0 3px var(--hover);
+}
+
+.color-palette {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  --palette-expanded: 158px;
+}
+
+.palette-trigger {
+  width: 32px;
+  height: 38px;
+  padding: 0;
+  flex: 0 0 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: var(--muted);
+}
+
+.palette-trigger:hover {
+  background: var(--hover);
+}
+
+.current-color {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color);
+  box-shadow:
+    0 0 0 3px var(--panel),
+    0 0 0 4px color-mix(in srgb, var(--color) 60%, var(--border));
+}
+
+.palette-inline {
+  width: 0;
+  min-width: 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    width 0.74s cubic-bezier(0.22, 0.7, 0.25, 1),
+    opacity 0.66s ease;
+}
+
+.color-palette.is-open .palette-inline {
+  width: var(--palette-expanded);
+  opacity: 1;
+}
+
+.palette-inline .colors {
+  width: max-content;
+  flex-shrink: 0;
+  gap: 12px;
+  padding: 0 6px 0 14px;
+  transform: translateX(-6px);
+  transition: transform 0.74s cubic-bezier(0.22, 0.7, 0.25, 1);
+}
+
+.color-palette.is-open .colors {
+  transform: translateX(0);
+}
+
+.palette-inline .color-button {
+  height: 18px;
+  width: 18px;
+}

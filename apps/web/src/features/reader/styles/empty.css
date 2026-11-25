@@ -1,0 +1,83 @@
+.pdf-empty-state {
+  position: absolute;
+  inset: 76px 20px 115px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+}
+
+.pdf-empty-symbol {
+  width: 76px;
+  height: 86px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--accent);
+  margin-bottom: 23px;
+  box-shadow: 0 7px 24px #00000009;
+}
+
+.pdf-empty-state h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 550;
+  letter-spacing: -0.7px;
+}
+
+.pdf-empty-state p {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 12px 0 25px;
+}
+
+.pdf-primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #5d57a6;
+  color: #fff;
+  padding: 12px 17px;
+  font-size: 12px;
+}
+
+.pdf-primary-button:hover:enabled {
+  background: #6b63b6;
+}
+
+.pdf-example-button {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 14px;
+  padding: 7px;
+  border-radius: 5px;
+}
+
+.pdf-example-button:hover {
+  color: var(--accent);
+}
+
+.pdf-inactive-toolbar .toolbar {
+  opacity: 0.32;
+  box-shadow: none;
+}
+
+.pdf-inactive-toolbar .ai-selection-hint {
+  display: none;
+}
+
+.pdf-empty-symbol.is-loading {
+  animation: pdf-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pdf-pulse {
+  50% {
+    opacity: 0.4;
+  }
+}

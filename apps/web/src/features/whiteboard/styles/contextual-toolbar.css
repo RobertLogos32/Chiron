@@ -1,0 +1,86 @@
+.toolbar.toolbar-contextual {
+  --toolbar-gap: 12px;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0;
+}
+
+.toolbar-options {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.toolbar-option {
+  display: grid;
+  grid-template-columns: 1fr;
+  opacity: 1;
+  visibility: visible;
+  transition:
+    grid-template-columns 240ms cubic-bezier(0.22, 0.7, 0.25, 1),
+    opacity 160ms ease,
+    visibility 0s;
+}
+
+.toolbar-option.is-collapsed {
+  grid-template-columns: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    grid-template-columns 240ms cubic-bezier(0.22, 0.7, 0.25, 1),
+    opacity 120ms ease,
+    visibility 0s 240ms;
+}
+
+.toolbar-option-clip {
+  min-width: 0;
+  overflow: hidden;
+}
+.toolbar-option.is-popover-open .toolbar-option-clip {
+  overflow: visible;
+}
+.toolbar-option-content,
+.toolbar-history {
+  display: flex;
+  align-items: center;
+  gap: var(--toolbar-gap);
+  width: max-content;
+  padding-left: var(--toolbar-gap);
+}
+.toolbar-option-content {
+  min-height: 38px;
+}
+.toolbar-history {
+  flex-shrink: 0;
+}
+
+@media (max-width: 760px) {
+  .toolbar.toolbar-contextual {
+    --toolbar-gap: 10px;
+    flex-direction: column;
+    column-gap: 0;
+    row-gap: 8px;
+  }
+  .toolbar-contextual .toolbar-option .divider,
+  .toolbar-contextual .toolbar-history .divider {
+    display: none;
+  }
+  .toolbar-option-content,
+  .toolbar-history {
+    padding: 0 calc(var(--toolbar-gap) / 2);
+  }
+}
+
+@media (max-width: 640px) {
+  .toolbar.toolbar-contextual {
+    --toolbar-gap: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toolbar-option,
+  .toolbar-option.is-collapsed {
+    transition: none;
+  }
+}
