@@ -15,7 +15,13 @@ import type { Bounds } from '../model/types';
 type Requests = {
   jobs: AiJob[];
   surfaces: Map<string, AiSurface>;
-  submit: (scope: string, area: Bounds, prompt: string, lockScope?: string) => string;
+  submit: (
+    scope: string,
+    area: Bounds,
+    prompt: string,
+    image: string,
+    lockScope?: string,
+  ) => string;
   dismiss: (id: string) => void;
   retry: (id: string) => void;
   register: (scope: string, surface: AiSurface) => () => void;
@@ -53,12 +59,15 @@ export function AiRequestsProvider({
     async (job: AiJob) => {
       const controller = new AbortController();
       controllers.current.set(job.id, controller);
-      // Frontend preview: a job waits until cancelled. Only an injected sender
-      // can produce an answer; there is no fabricated response or completion timer.
-      if (!onSend) return;
       try {
+        if (!onSend || !job.image) throw new Error('AI request is unavailable');
         const response = await onSend(
-          { scope: job.scope, prompt: job.prompt, selection: { ...job.area } },
+          {
+            scope: job.scope,
+            prompt: job.prompt,
+            selection: { ...job.area },
+            image: job.image,
+          },
           controller.signal,
         );
         if (controller.signal.aborted || controllers.current.get(job.id) !== controller)
@@ -66,15 +75,18 @@ export function AiRequestsProvider({
         if (!response.trim()) throw new Error('Empty AI response');
         setJobs((current) =>
           current.map((item) =>
-            item.id === job.id ? { ...item, status: 'success', response } : item,
+            item.id === job.id
+              ? { ...item, status: 'success', response, image: undefined }
+              : item,
           ),
         );
-      } catch {
+      } catch (failure) {
         if (controller.signal.aborted || controllers.current.get(job.id) !== controller)
           return;
+        const error = failure instanceof Error ? failure.message : undefined;
         setJobs((current) =>
           current.map((item) =>
-            item.id === job.id ? { ...item, status: 'error' } : item,
+            item.id === job.id ? { ...item, status: 'error', error } : item,
           ),
         );
       } finally {
@@ -86,7 +98,7 @@ export function AiRequestsProvider({
   );
 
   const submit = useCallback(
-    (scope: string, area: Bounds, value: string, lockScope?: string) => {
+    (scope: string, area: Bounds, value: string, image: string, lockScope?: string) => {
       const prompt = value.trim();
       if (!prompt) return '';
       const job: AiJob = {
@@ -94,6 +106,7 @@ export function AiRequestsProvider({
         scope,
         area: { ...area },
         prompt,
+        image,
         status: 'pending',
         lockScope,
         target: latestSurfaces.current.get(scope)?.target,
@@ -114,7 +127,7 @@ export function AiRequestsProvider({
     (id: string) => {
       const job = jobs.find((item) => item.id === id);
       if (!job || job.status !== 'error' || controllers.current.has(id)) return;
-      const next: AiJob = { ...job, status: 'pending' };
+      const next: AiJob = { ...job, status: 'pending', error: undefined };
       setJobs((current) => current.map((item) => (item.id === id ? next : item)));
       void run(next);
     },
@@ -220,7 +233,8 @@ export function useAiScope(scope: string, lockScope = scope) {
   );
   return {
     areas,
-    submit: (area: Bounds, prompt: string) => submit(scope, area, prompt, lockScope),
+    submit: (area: Bounds, prompt: string, image: string) =>
+      submit(scope, area, prompt, image, lockScope),
   };
 }
 

@@ -1,6 +1,7 @@
 import type { RefObject } from 'react';
 import { Layer, Stage } from 'react-konva';
 import type Konva from 'konva';
+import { PATTERN_PERIOD } from '../../config/defaults';
 import type {
   Bounds,
   Camera,
@@ -65,7 +66,7 @@ export function WhiteboardCanvas({
   const foreground = notes.filter(
     (note) => note.type !== 'stroke' || note.tool !== 'highlighter',
   );
-  const patternPeriod = pattern === 'ruled' ? 36 : pattern === 'grid' ? 32 : 24;
+  const patternPeriod = PATTERN_PERIOD[pattern] * camera.zoom;
 
   return (
     <div
@@ -75,7 +76,7 @@ export function WhiteboardCanvas({
       aria-label="Lavagna"
       style={{
         backgroundPosition: `${camera.x}px ${camera.y}px`,
-        backgroundSize: `${patternPeriod * camera.zoom}px ${patternPeriod * camera.zoom}px`,
+        backgroundSize: `${patternPeriod}px ${patternPeriod}px`,
       }}
     >
       <Stage
@@ -91,13 +92,13 @@ export function WhiteboardCanvas({
         onPointerLeave={surface.onPointerLeave}
         onWheel={surface.onWheel}
       >
-        <Layer>
+        <Layer name="capture-ink">
           <Ink notes={markers} tool={tool} theme={theme} />
           {draft?.tool === 'highlighter' && (
             <Ink notes={[draft]} tool={tool} theme={theme} />
           )}
         </Layer>
-        <Layer>
+        <Layer name="capture-ink">
           <Ink
             notes={foreground}
             editingId={editor.draft?.id}

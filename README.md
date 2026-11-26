@@ -23,6 +23,7 @@ Chiron/
       src/shared/        Hook comuni
       tests/             Verifiche PDF, lavagna e libreria
     server/              Server Express e TypeScript, organizzato per responsabilità
+    agents/              Agente LangGraph per il cursore AI
     _archive/            Struttura Konva precedente, conservata e non utilizzata
 ```
 
@@ -36,16 +37,34 @@ Chiron/
 - Trascina la zona dei comandi o la maniglia di un pannello per cambiarne la posizione: una linea mostra il punto di inserimento e i bordi fanno scorrere lo spazio quando serve. PDF, lavagne e chat mantengono il proprio stato durante lo spostamento. Esc annulla. Con il fuoco sulla maniglia del pannello, Alt + freccia sinistra/destra riordina da tastiera; su mobile usa Alt + freccia su/giù.
 - In studio, passa sul bordo sinistro per rivelare le materie. La freccia in alto a sinistra torna alla libreria. La puntina o `Ctrl+\` / `Cmd+\` fissa la navigazione sui desktop.
 - **Impostazioni**, nella navigazione delle materie, contiene il tema chiaro/scuro dell’area di studio e le informazioni sul salvataggio. Tornando allo studio, pannelli, pagine, zoom, appunti e bozze chat restano al loro posto. Lo sfondo della lavagna si sceglie dal comando in alto a destra, che si espande al passaggio del mouse.
-- **Inizia la chat**, in fondo alla libreria della materia, apre direttamente una conversazione; puoi anche aggiungere chat affiancate agli altri pannelli. Il prototipo include suggerimenti iniziali, composizione multilinea, selezione dei materiali della materia, risposte dimostrative progressive con interruzione, copia, rigenerazione e modifica dei messaggi. Modificare una domanda sostituisce i messaggi successivi. L’editor della domanda usa tutta la larghezza della chat e adatta automaticamente l’altezza al testo, senza ridimensionamento manuale; Esc annulla e Ctrl+Invio salva e invia. Lo scorrimento segue la risposta solo se stai leggendo in fondo; una freccia permette di tornare all’ultimo messaggio. Ogni pannello ha conversazione e bozza separate, conservate finché resta aperto; L’icona **Nuova chat**, in alto a destra della chat e a sinistra di Affianca, le azzera. La freccia per tornare alla materia resta in alto a sinistra, senza il nome della materia. Invio invia e Shift+Invio va a capo. La modalità **Demo** usa esempi locali, non legge i file e non contatta servizi AI. I lavori AI sulle selezioni di PDF e lavagna mantengono invece il loro comportamento di attesa senza risposte simulate.
+- **Inizia la chat**, in fondo alla libreria della materia, apre direttamente una conversazione; puoi anche aggiungere chat affiancate agli altri pannelli. Il prototipo include suggerimenti iniziali, composizione multilinea, selezione dei materiali della materia, risposte dimostrative progressive con interruzione, copia, rigenerazione e modifica dei messaggi. Modificare una domanda sostituisce i messaggi successivi. L’editor della domanda usa tutta la larghezza della chat e adatta automaticamente l’altezza al testo, senza ridimensionamento manuale; Esc annulla e Ctrl+Invio salva e invia. Lo scorrimento segue la risposta solo se stai leggendo in fondo; una freccia permette di tornare all’ultimo messaggio. Ogni pannello ha conversazione e bozza separate, conservate finché resta aperto; L’icona **Nuova chat**, in alto a destra della chat e a sinistra di Affianca, le azzera. La freccia per tornare alla materia resta in alto a sinistra, senza il nome della materia. Invio invia e Shift+Invio va a capo. La modalità **Demo** usa esempi locali, non legge i file e non contatta servizi AI.
 - Le funzionalità originali di zoom, selezione, penna, evidenziatore, gomma, testo, sfondo, tema e annulla/ripeti restano disponibili.
 - La barra si adatta allo strumento con un’animazione: selezione, mano e AI nascondono colori e spessore; la gomma nasconde solo i colori. Penna, evidenziatore e testo mostrano entrambi i controlli. Le preferenze vengono conservate passando da uno strumento all’altro.
 - Con **AI**, seleziona un’area: la barra compatta cerca spazio fuori dalla selezione e può sovrapporsi temporaneamente agli altri pannelli. La bozza resta legata alla selezione di origine e viene conservata cambiando pannello o aprendo le impostazioni. `Invio` o `Ctrl+Invio` nascondono la barra: resta il buddy Chiron con occhiali e rotella, accanto a una X, sotto l’angolo inferiore destro della selezione. Durante lo scorrimento il buddy segue sempre lo stesso angolo. Se l’area esce dal pannello o lo zoom scende sotto il 93%, resta il solo buddy globale in basso a destra. `Shift+Invio` va a capo; `Esc` chiude la bozza o interrompe la richiesta selezionata. I blocchi AI si applicano a tutte le viste dello stesso quaderno o della stessa pagina PDF; il buddy riapre anche un pannello chiuso quando torni alla sua selezione.
 
-I PDF si salvano in IndexedDB; materie, preferenze e appunti nel browser. Ogni quaderno ha un salvataggio indipendente. Gli appunti si salvano anche uscendo immediatamente da un quaderno. I documenti non vengono inviati al server. Il salvataggio vale per questo browser e indirizzo: cancellare i dati del sito rimuove i materiali.
+I PDF si salvano in IndexedDB; materie, preferenze e appunti nel browser. Ogni quaderno ha un salvataggio indipendente. Gli appunti si salvano anche uscendo immediatamente da un quaderno. Quando invii una richiesta con il cursore AI, l’agente riceve il messaggio e il PNG ritagliato dalla selezione e li inoltra al fornitore configurato. Il salvataggio vale per questo browser e indirizzo: cancellare i dati del sito rimuove i materiali.
 
 Puoi inviare più selezioni AI, anche sovrapposte. Ogni richiesta conserva il proprio rettangolo e buddy cambiando strumento, pannello, pagina PDF o materiale. Le aree in lavorazione impediscono scrittura, gomma, modifica e trascinamento del testo, cancellazione e annulla/ripeti sui contenuti coinvolti; il resto del foglio rimane utilizzabile. I testi e i tratti esistenti che toccano un’area occupata restano immutabili fino alla sua liberazione. La X accanto a una selezione annulla solo quella richiesta; un’area condivisa con altri lavori rimane protetta. Durante i lavori resta **un solo buddy globale senza X** nell’angolo. Click o Invio partono dalla selezione più vicina sopra la vista corrente e scorrono i risultati di PDF e lavagna verso l’alto; alla prima selezione il percorso si inverte verso il basso, e viceversa all’ultima. Con le frecce su e giù sul buddy puoi scegliere la direzione. Il comando attiva il pannello, riapre il materiale o la pagina PDF se necessario e riporta lo zoom almeno al 93%. Anche le selezioni sovrapposte sono raggiungibili singolarmente, con la propria X per interrompere il lavoro.
 
-La barra AI è un’anteprima frontend, senza un servizio AI collegato: lo stato di attesa rimane fino all’annullamento e non vengono generate risposte fittizie. `AiRequestsProvider.onSend(request, signal)` è pronto per un gestore asincrono che restituisce il testo della risposta; la richiesta comprende lo scope del quaderno o della pagina PDF. Risposta, errore e annullamento liberano solo il relativo blocco. In caso di errore compare Riprova. L’annullamento interrompe il segnale e ignora risposte tardive; i lavori non si interrompono smontando l’editor di origine. I lavori rimangono nella sessione aperta e non vengono ripristinati ricaricando l’app. Il server esistente espone solo `/health`: autenticazione e sincronizzazione cloud non sono implementate. L’origine e il prompt del buddy sono documentati in `apps/web/src/assets/buddy/README.md`.
+Risposta, errore e annullamento liberano solo il blocco della richiesta. In caso di errore, **Riprova** reinvia il messaggio e il ritaglio originali. I lavori rimangono disponibili nella sessione aperta anche quando chiudi il pannello di origine. L’origine e il prompt del buddy sono documentati in `apps/web/src/assets/buddy/README.md`.
+
+## Avvio del cursore AI
+
+Da PowerShell, apri un secondo terminale e prepara l’ambiente dell’agente.
+
+```powershell
+cd apps/agents
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+Imposta `OPENROUTER_API_KEY` in `apps/agents/.env`, creandolo se manca. Per impostazione predefinita, `openrouter/free` sceglie un modello gratuito con ingresso immagine. Puoi fissare un altro modello compatibile impostando `AI_MODEL`. Il modulo `src/core/agent.py` contiene il flusso LangGraph e `src/server/app.py` espone l’endpoint FastAPI. Avvia il servizio dalla cartella `apps/agents`.
+
+```powershell
+.\.venv\Scripts\python.exe -B -m uvicorn src.server.app:app --host 127.0.0.1 --port 8000
+```
+
+Vite inoltra `POST /api/ai/selection` all’agente in sviluppo e in anteprima. Per il frontend compilato, configura lo stesso inoltro sul dominio da cui lo servi.
 
 ## Verifiche e produzione
 

@@ -3,3 +3,5 @@ dist/
 *.tsbuildinfo
 .design-reference/
 .verification/
+.venv
+.env

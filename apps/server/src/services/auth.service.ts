@@ -3,12 +3,13 @@ import User from "../models/user.model.js";
 import * as dto from "../dto/auth.dto.js";
 import { AppError } from "../utils/appError.js";
 import mongoose from "mongoose";
+import { env } from "../config/env.js";
 
 
 const signToken = (id: unknown): string => {
-  return jwt.sign({ id }, process.env.JWT_SECRET as string, {
-    expiresIn: process.env.JWT_EXPIRES_IN,
-  } as jwt.SignOptions);
+  return jwt.sign({ id }, env.jwtSecret, {
+    expiresIn: env.jwtExpiresIn,
+  });
 };
 
 export const registerUser = async ({name, email, password} : dto.RegisterDto)  => {
@@ -69,8 +70,6 @@ export const deleteUser = async (userId: string, data: dto.DeleteMeDto) => {
   if (!user) {
     throw new AppError("Utente non trovato", 404, "USER_NOT_FOUND");
   }
-
-  // Conferma: senza la password giusta non si cancella niente
   if (!(await user.comparePassword(data.password))) {
     throw new AppError("Password errata", 400, "WRONG_PASSWORD");
   }

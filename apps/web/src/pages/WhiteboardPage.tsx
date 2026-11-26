@@ -3,6 +3,7 @@ import { BoardSettings } from '../features/whiteboard/components/settings/BoardS
 import { WhiteboardToolbar } from '../features/whiteboard/components/toolbar/WhiteboardToolbar';
 import { AiPrompt } from '../features/whiteboard/components/ai/AiPrompt';
 import { useWhiteboard } from '../features/whiteboard/hooks/useWhiteboard';
+import { captureAiSelection } from '../features/whiteboard/lib/captureAiSelection';
 import '../features/whiteboard/styles/index.css';
 
 export function WhiteboardPage({
@@ -31,7 +32,16 @@ export function WhiteboardPage({
           active={active}
           context="notebook"
           onClose={board.closeAi}
-          onSend={(request) => board.ai.submit(request.selection, request.prompt)}
+          onSend={({ selection, prompt }) => {
+            const image = captureAiSelection(
+              board.surface.stageRef.current,
+              board.surface.workspaceRef.current,
+              selection,
+              scene.camera,
+              { pattern: appearance.pattern },
+            );
+            board.ai.submit(selection, prompt, image);
+          }}
         />
       )}
       <BoardSettings

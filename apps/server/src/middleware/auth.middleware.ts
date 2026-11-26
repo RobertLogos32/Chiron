@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import { env } from "../config/env.js";
 
 // Non ancora collegato a nessuna rotta (l'autenticazione a valle usa X-User-Id
 // iniettato dal gateway) — tenuto tipizzato per usi futuri.
@@ -13,7 +14,7 @@ export default function authMiddleware(req: Request, res: Response, next: NextFu
     return;
   }
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as { id: string };
+    const decoded = jwt.verify(token, env.jwtSecret) as { id: string };
     req.user = { id: decoded.id };
     next();
   } catch {

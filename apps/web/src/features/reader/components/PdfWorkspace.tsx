@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { WhiteboardToolbar } from '@whiteboard/components/toolbar/WhiteboardToolbar';
 import { AiPrompt } from '@whiteboard/components/ai/AiPrompt';
 import type { useDrawingTools } from '@whiteboard/hooks/useDrawingTools';
@@ -11,6 +11,8 @@ import type { LoadedPdf } from '../model/types';
 import { PdfCanvas } from './PdfCanvas';
 import { PdfHeader } from './PdfHeader';
 import { useAiRequests } from '@whiteboard/hooks/useAiRequests';
+import { captureAiSelection } from '@whiteboard/lib/captureAiSelection';
+import { usePdfRaster } from '../hooks/usePdfRaster';
 
 type PdfWorkspaceProps = {
   source: LoadedPdf;
@@ -45,6 +47,8 @@ export function PdfWorkspace({
     page.page?.pageNumber === number,
     paneId,
   );
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const raster = usePdfRaster(canvas, page.page, annotations.camera.zoom);
   useEffect(() => {
     if (
       navigation?.target?.kind === 'pdf' &&
@@ -74,7 +78,9 @@ export function PdfWorkspace({
   return (
     <>
       <PdfCanvas
-        page={page.page}
+        canvas={canvas}
+        raster={raster}
+        hasPage={page.page?.pageNumber === number}
         pageNumber={number}
         size={page.size}
         text={page.text}
@@ -113,7 +119,20 @@ export function PdfWorkspace({
           active={active}
           context="pdf"
           onClose={annotations.closeAi}
-          onSend={(request) => annotations.ai.submit(request.selection, request.prompt)}
+          onSend={({ selection, prompt }) => {
+            const pdf = canvas.current;
+            if (!pdf || !raster.ready || page.page?.pageNumber !== number) {
+              throw new Error('PDF page is not ready');
+            }
+            const image = captureAiSelection(
+              annotations.stageRef.current,
+              annotations.workspaceRef.current,
+              selection,
+              annotations.camera,
+              { pdf, size: page.size },
+            );
+            annotations.ai.submit(selection, prompt, image);
+          }}
         />
       )}
       {page.error && (

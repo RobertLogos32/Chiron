@@ -1,17 +1,18 @@
-import { useRef } from 'react';
+import type { RefObject } from 'react';
 import { Layer, Stage } from 'react-konva';
 import type Konva from 'konva';
-import type { PDFPageProxy } from 'pdfjs-dist';
 import { Ink } from '@whiteboard/components/canvas/Ink';
 import { SelectionOverlay } from '@whiteboard/components/canvas/SelectionOverlay';
 import { TextEditor } from '@whiteboard/components/canvas/TextEditor';
 import { screenToWorld } from '@whiteboard/lib/geometry';
 import type { Size, Theme } from '@whiteboard/model/types';
 import type { usePdfAnnotations } from '../../annotations/hooks/usePdfAnnotations';
-import { usePdfRaster } from '../hooks/usePdfRaster';
+import type { usePdfRaster } from '../hooks/usePdfRaster';
 
 type PdfCanvasProps = {
-  page: PDFPageProxy | null;
+  canvas: RefObject<HTMLCanvasElement | null>;
+  raster: ReturnType<typeof usePdfRaster>;
+  hasPage: boolean;
   pageNumber: number;
   size: Size;
   text: string;
@@ -20,15 +21,15 @@ type PdfCanvasProps = {
 };
 
 export function PdfCanvas({
-  page,
+  canvas,
+  raster,
+  hasPage,
   pageNumber,
   size,
   text,
   theme,
   annotations: board,
 }: PdfCanvasProps) {
-  const canvas = useRef<HTMLCanvasElement>(null);
-  const raster = usePdfRaster(canvas, page, board.camera.zoom);
   const { camera, viewport, tools, notes, draft, selection, cursor, editor } = board;
   const markers = notes.filter(
     (note) => note.type === 'stroke' && note.tool === 'highlighter',
@@ -39,7 +40,7 @@ export function PdfCanvas({
   const clip = { clipX: 0, clipY: 0, clipWidth: size.width, clipHeight: size.height };
 
   function onPointerDown(event: Konva.KonvaEventObject<PointerEvent>) {
-    if (!page) return;
+    if (!hasPage) return;
     const screen = board.stageRef.current?.getPointerPosition();
     if (!screen) return;
     const point = screenToWorld(screen, camera);
@@ -88,13 +89,13 @@ export function PdfCanvas({
         onPointerLeave={board.pointer.onPointerLeave}
         onWheel={board.pointer.onWheel}
       >
-        <Layer {...clip}>
+        <Layer {...clip} name="capture-ink">
           <Ink notes={markers} tool={tools.tool} theme="light" />
           {draft?.tool === 'highlighter' && (
             <Ink notes={[draft]} tool={tools.tool} theme="light" />
           )}
         </Layer>
-        <Layer {...clip}>
+        <Layer {...clip} name="capture-ink">
           <Ink
             notes={ink}
             tool={tools.tool}
@@ -131,7 +132,7 @@ export function PdfCanvas({
         />
       )}
       <TextEditor editor={editor} camera={camera} theme="light" />
-      {(raster.loading || !page) && (
+      {(raster.loading || !hasPage) && (
         <div className="pdf-render-status" role="status">
           Caricamento pagina…
         </div>

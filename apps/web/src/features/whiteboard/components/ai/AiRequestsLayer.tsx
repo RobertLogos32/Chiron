@@ -189,7 +189,7 @@ function AiRequestBubble({
             <span className="ai-prompt-status" role="status">
               {job.status === 'success'
                 ? 'Risposta ricevuta'
-                : 'Risposta non disponibile. Riprova.'}
+                : (job.error ?? 'Risposta non disponibile. Riprova.')}
             </span>
             {job.status === 'success' && (
               <div className="ai-prompt-response" tabIndex={0}>

@@ -1,0 +1,8 @@
+langgraph
+langchain-openai
+python-dotenv
+fastapi
+uvicorn
+
+# Windows Smart App Control blocca le DLL di xxhash 4.1.0 (dipendenza di langgraph)
+xxhash==3.6.0

@@ -33,6 +33,7 @@ export function AiPrompt({
   onSend: (request: AiPromptRequest) => void;
 }) {
   const [prompt, setPrompt] = useState('');
+  const [captureError, setCaptureError] = useState(false);
   const root = useRef<HTMLFormElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const submitted = useRef(false);
@@ -51,7 +52,13 @@ export function AiPrompt({
     const text = prompt.trim();
     if (!text || submitted.current) return;
     submitted.current = true;
-    onSend({ prompt: text, selection: { ...area } });
+    try {
+      onSend({ prompt: text, selection: { ...area } });
+    } catch {
+      submitted.current = false;
+      setCaptureError(true);
+      return;
+    }
     onClose();
   }
   if (!active) return null;
@@ -61,7 +68,7 @@ export function AiPrompt({
       className="ai-prompt"
       data-theme={theme}
       data-source={context}
-      data-state="idle"
+      data-state={captureError ? 'error' : 'idle'}
       data-placement={position.placement}
       aria-label="Prompt AI per l’area selezionata"
       style={{ left: position.x, top: position.y, width: position.width }}
@@ -95,6 +102,11 @@ export function AiPrompt({
             rows={1}
             onChange={(event) => setPrompt(event.target.value)}
           />
+          {captureError && (
+            <span className="ai-prompt-status" role="alert">
+              Impossibile acquisire l’area. Riprova.
+            </span>
+          )}
         </div>
         <button
           type="button"

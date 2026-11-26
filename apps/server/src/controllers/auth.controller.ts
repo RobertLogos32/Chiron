@@ -63,25 +63,8 @@ export const updatePassword = async (req: Request, res: Response, next: NextFunc
     if (!userId) {
       throw new AppError("User ID mancante nella richiesta dal gateway", 401, "MISSING_USER_ID");
     }
-    // ERRORE: qui chiedi almeno 6 caratteri, ma updatePasswordDto e registerDto ne chiedono 8: regole incoerenti.
-    // Inoltre se newPassword non è una stringa, `.length` non fa il controllo che ti aspetti.
-    // DA FARE: const { currentPassword, newPassword } = updatePasswordDto.parse(req.body);
-    const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword) {
-      throw new AppError("Password attuale e nuova password sono richieste", 400, "MISSING_FIELDS");
-    }
-    if (newPassword.length < 6) {
-      throw new AppError("La nuova password deve avere almeno 6 caratteri", 400, "WEAK_PASSWORD");
-    }
+    const { currentPassword, newPassword } = dto.updatePasswordDto.parse(req.body);
 
-    // I token precedenti non valgono più: il client deve salvare questo.
-    // ERRORE: authService.updatePassword non esiste. Il commento sopra promette che i vecchi token
-    // non valgono più, ma senza tokenVersion (vedi getTokenVersion) non è vero.
-    // DA FARE nel service:
-    //   1. User.findById(userId).select("+password") e verifica currentPassword con comparePassword (401 se sbagliata)
-    //   2. user.password = newPassword; user.tokenVersion += 1; await user.save();
-    //      Usa save() e NON findByIdAndUpdate, altrimenti il pre("save") non cifra la nuova password.
-    //   3. restituisci un nuovo token con signToken
     const token = await authService.updatePassword(userId, {currentPassword, newPassword});
     res.status(200).json({ status: "success", message: "Password aggiornata", token });
   } catch (err) {

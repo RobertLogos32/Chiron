@@ -27,10 +27,11 @@ import {
   useAiRequests,
 } from './features/whiteboard/hooks/useAiRequests';
 import { AiRequestsLayer } from './features/whiteboard/components/ai/AiRequestsLayer';
+import { sendAiSelection } from './features/whiteboard/services/aiSelection';
 
 export default function App() {
   return (
-    <AiRequestsProvider>
+    <AiRequestsProvider onSend={sendAiSelection}>
       <StudyApp />
     </AiRequestsProvider>
   );

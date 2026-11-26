@@ -10,16 +10,18 @@ export type AiTarget = {
   paneId?: string;
 };
 export type AiPromptSender = (
-  request: AiPromptRequest & { scope: string },
+  request: AiPromptRequest & { scope: string; image: string },
   signal: AbortSignal,
 ) => Promise<string>;
 export type AiJob = {
   id: string;
   scope: string;
   prompt: string;
+  image?: string;
   area: Bounds;
   status: 'pending' | 'success' | 'error';
   response?: string;
+  error?: string;
   target?: AiTarget;
   lockScope?: string;
 };
