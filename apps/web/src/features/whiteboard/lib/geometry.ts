@@ -29,6 +29,7 @@ export function rectangle(a: Point, b: Point): Bounds {
 
 export function noteBounds(note: Note): Bounds {
   if (note.type === 'text') {
+    if (note.latex) return { x: note.x, y: note.y, ...note.latex };
     const width = note.width ?? 600;
     const lines = note.text.split('\n');
     const rows = lines.reduce(

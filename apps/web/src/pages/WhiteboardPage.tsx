@@ -33,14 +33,14 @@ export function WhiteboardPage({
           context="notebook"
           onClose={board.closeAi}
           onSend={({ selection, prompt }) => {
-            const image = captureAiSelection(
+            const capture = captureAiSelection(
               board.surface.stageRef.current,
               board.surface.workspaceRef.current,
               selection,
               scene.camera,
               { pattern: appearance.pattern },
             );
-            board.ai.submit(selection, prompt, image);
+            board.ai.submit(capture.area, prompt, capture);
           }}
         />
       )}

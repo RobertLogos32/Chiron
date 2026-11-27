@@ -4,6 +4,7 @@ export type Tool = 'select' | 'pen' | 'highlighter' | 'eraser' | 'text' | 'hand'
 export type Point = { x: number; y: number };
 export type Size = { width: number; height: number };
 export type Bounds = Point & Size;
+export type BoardWritePlacement = 'below';
 export type Camera = Point & { zoom: number };
 export type Appearance = { theme: Theme; pattern: Pattern };
 
@@ -25,6 +26,7 @@ export type TextNote = {
   color: string;
   fontSize: number;
   width?: number;
+  latex?: Size;
 };
 
 export type Note = Stroke | TextNote;

@@ -1,6 +1,9 @@
 import type Konva from 'konva';
 import { PATTERN_PERIOD } from '../config/defaults';
 import type { Bounds, Camera, Pattern, Size } from '../model/types';
+import type { AiCapture } from '../model/ai';
+import { rectangle, screenToWorld } from './geometry';
+import { createAiGuide } from './createAiGuide';
 
 type SurfaceContent = { pattern: Pattern } | { pdf: HTMLCanvasElement; size: Size };
 
@@ -10,7 +13,7 @@ export function captureAiSelection(
   area: Bounds,
   camera: Camera,
   content: SurfaceContent,
-): string {
+): AiCapture & { area: Bounds } {
   if (!stage || !workspace) throw new Error('Surface is not ready');
 
   const left = camera.x + area.x * camera.zoom;
@@ -35,6 +38,12 @@ export function captureAiSelection(
   const scaleY = output.height / height;
   ctx.setTransform(scaleX, 0, 0, scaleY, -x * scaleX, -y * scaleY);
 
+  const foreground = document.createElement('canvas');
+  foreground.width = output.width;
+  foreground.height = output.height;
+  const ink = foreground.getContext('2d');
+  ink?.setTransform(scaleX, 0, 0, scaleY, -x * scaleX, -y * scaleY);
+
   const style = getComputedStyle(workspace);
   ctx.fillStyle = style.backgroundColor;
   ctx.fillRect(x, y, width, height);
@@ -44,6 +53,7 @@ export function captureAiSelection(
     ctx.fillStyle = style.getPropertyValue('--pdf-paper').trim() || '#fff';
     ctx.fillRect(camera.x, camera.y, pageWidth, pageHeight);
     ctx.drawImage(content.pdf, camera.x, camera.y, pageWidth, pageHeight);
+    ink?.drawImage(content.pdf, camera.x, camera.y, pageWidth, pageHeight);
   } else if (content.pattern !== 'blank') {
     drawPattern(ctx, { x, y, width, height }, camera, content.pattern, style);
   }
@@ -56,8 +66,18 @@ export function captureAiSelection(
     ctx.globalCompositeOperation =
       getComputedStyle(canvas).mixBlendMode === 'multiply' ? 'multiply' : 'source-over';
     ctx.drawImage(canvas, 0, 0, stage.width(), stage.height());
+    if (layer.hasName('capture-foreground')) {
+      ink?.drawImage(canvas, 0, 0, stage.width(), stage.height());
+    }
   }
-  return output.toDataURL('image/png');
+  return {
+    image: output.toDataURL('image/png'),
+    guide: ink ? createAiGuide(output, ink, 'pdf' in content) : undefined,
+    area: rectangle(
+      screenToWorld({ x, y }, camera),
+      screenToWorld({ x: x + width, y: y + height }, camera),
+    ),
+  };
 }
 
 function drawPattern(

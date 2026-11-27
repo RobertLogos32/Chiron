@@ -9,8 +9,16 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import type { AiJob, AiPromptSender, AiSurface, AiTarget } from '../model/ai';
+import type {
+  AiBoardLocation,
+  AiCapture,
+  AiJob,
+  AiPromptSender,
+  AiSurface,
+  AiTarget,
+} from '../model/ai';
 import type { Bounds } from '../model/types';
+import { prepareAiWrites } from '../lib/prepareAiWrites';
 
 type Requests = {
   jobs: AiJob[];
@@ -19,7 +27,7 @@ type Requests = {
     scope: string,
     area: Bounds,
     prompt: string,
-    image: string,
+    capture: AiCapture,
     lockScope?: string,
   ) => string;
   dismiss: (id: string) => void;
@@ -60,23 +68,74 @@ export function AiRequestsProvider({
       const controller = new AbortController();
       controllers.current.set(job.id, controller);
       try {
-        if (!onSend || !job.image) throw new Error('AI request is unavailable');
-        const response = await onSend(
+        if (!onSend || !job.capture) throw new Error('AI request is unavailable');
+        const answer = await onSend(
           {
             scope: job.scope,
             prompt: job.prompt,
             selection: { ...job.area },
-            image: job.image,
+            ...job.capture,
+            canWrite: !!job.destination,
           },
           controller.signal,
         );
         if (controller.signal.aborted || controllers.current.get(job.id) !== controller)
           return;
-        if (!response.trim()) throw new Error('Empty AI response');
+        let written: AiBoardLocation | undefined;
+        let writeBlocked = false;
+        let unwritten = answer.writes.map((write) => write.content);
+        const destination = job.destination;
+        const surface = destination && latestSurfaces.current.get(destination.scope);
+        if (unwritten.length && destination && surface?.write) {
+          const prepared = await prepareAiWrites(
+            answer.writes,
+            surface.theme,
+            answer.writeStyle,
+          );
+          if (controller.signal.aborted || controllers.current.get(job.id) !== controller)
+            return;
+          const writer = latestSurfaces.current.get(destination.scope)?.write;
+          if (writer && prepared.notes.length) {
+            // The current request can write in its own selection; all other pending
+            // selections on this notebook still reserve their space.
+            const otherLockedAreas = latestJobs.current
+              .filter(
+                (item) =>
+                  item.id !== job.id &&
+                  item.status === 'pending' &&
+                  (item.lockScope ?? item.scope) === (job.lockScope ?? job.scope),
+              )
+              .map((item) => item.area);
+            const area = writer(
+              prepared.notes,
+              destination.area,
+              otherLockedAreas,
+              answer.writePlacement,
+            );
+            if (area) {
+              written = { ...destination, area };
+              unwritten = prepared.failed;
+            } else {
+              writeBlocked = true;
+            }
+          }
+        }
+        const displayAnswer = {
+          ...answer,
+          response: [answer.response, ...unwritten].filter(Boolean).join('\n\n'),
+          writes: [],
+        };
         setJobs((current) =>
           current.map((item) =>
             item.id === job.id
-              ? { ...item, status: 'success', response, image: undefined }
+              ? {
+                  ...item,
+                  status: 'success',
+                  answer: displayAnswer,
+                  written,
+                  writeBlocked,
+                  capture: undefined,
+                }
               : item,
           ),
         );
@@ -98,18 +157,28 @@ export function AiRequestsProvider({
   );
 
   const submit = useCallback(
-    (scope: string, area: Bounds, value: string, image: string, lockScope?: string) => {
+    (
+      scope: string,
+      area: Bounds,
+      value: string,
+      capture: AiCapture,
+      lockScope?: string,
+    ) => {
       const prompt = value.trim();
       if (!prompt) return '';
+      const surface = latestSurfaces.current.get(scope);
       const job: AiJob = {
         id: crypto.randomUUID(),
         scope,
         area: { ...area },
         prompt,
-        image,
+        capture,
         status: 'pending',
         lockScope,
-        target: latestSurfaces.current.get(scope)?.target,
+        target: surface?.target,
+        destination: surface?.write
+          ? { scope, area: { ...area }, target: surface.target }
+          : undefined,
       };
       setJobs((current) => [...current, job]);
       void run(job);
@@ -154,13 +223,14 @@ export function AiRequestsProvider({
   );
   const reveal = useCallback(async (id: string) => {
     const job = latestJobs.current.find(
-      (item) => item.id === id && item.status === 'pending',
+      (item) => item.id === id && (item.status === 'pending' || !!item.written),
     );
     if (!job) return;
-    setNavigation({ jobId: id, scope: job.scope, target: job.target });
-    if (job.target && navigator.current) {
+    const { scope, target } = job.written ?? job;
+    setNavigation({ jobId: id, scope, target });
+    if (target && navigator.current) {
       try {
-        if (!(await navigator.current(job.target)))
+        if (!(await navigator.current(target)))
           setNavigation((current) => (current?.jobId === id ? null : current));
       } catch {
         setNavigation((current) => (current?.jobId === id ? null : current));
@@ -182,9 +252,13 @@ export function AiRequestsProvider({
     const firstFrame = requestAnimationFrame(() => {
       secondFrame = requestAnimationFrame(() => {
         const job = latestJobs.current.find(
-          (item) => item.id === navigation.jobId && item.status === 'pending',
+          (item) =>
+            item.id === navigation.jobId && (item.status === 'pending' || !!item.written),
         );
-        if (job) latestSurfaces.current.get(navigation.scope)?.reveal?.(job.area);
+        if (job)
+          latestSurfaces.current
+            .get(navigation.scope)
+            ?.reveal?.(job.written?.area ?? job.area);
         setNavigation((current) =>
           current?.jobId === navigation.jobId ? null : current,
         );
@@ -233,8 +307,8 @@ export function useAiScope(scope: string, lockScope = scope) {
   );
   return {
     areas,
-    submit: (area: Bounds, prompt: string, image: string) =>
-      submit(scope, area, prompt, image, lockScope),
+    submit: (area: Bounds, prompt: string, capture: AiCapture) =>
+      submit(scope, area, prompt, capture, lockScope),
   };
 }
 
@@ -243,6 +317,9 @@ export function useAiSurface(scope: string, surface: AiSurface) {
   const { anchor, camera, theme, context, target, ready } = surface;
   const reveal = useRef(surface.reveal);
   reveal.current = surface.reveal;
+  const write = useRef(surface.write);
+  write.current = surface.write;
+  const writable = !!surface.write;
   useLayoutEffect(
     () =>
       register(scope, {
@@ -253,6 +330,10 @@ export function useAiSurface(scope: string, surface: AiSurface) {
         target,
         ready,
         reveal: (area) => reveal.current?.(area),
+        write: writable
+          ? (notes, area, otherLockedAreas, placement) =>
+              write.current!(notes, area, otherLockedAreas, placement)
+          : undefined,
       }),
     [
       register,
@@ -269,6 +350,7 @@ export function useAiSurface(scope: string, surface: AiSurface) {
       target?.pageHeight,
       target?.paneId,
       ready,
+      writable,
     ],
   );
 }

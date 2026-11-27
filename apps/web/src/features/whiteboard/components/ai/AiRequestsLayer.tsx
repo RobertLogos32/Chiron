@@ -7,6 +7,7 @@ import { useBoardAppearance } from '../../hooks/useBoardAppearance';
 import type { AiJob, AiSurface } from '../../model/ai';
 import type { Theme } from '../../model/types';
 import { AiBuddy } from './AiBuddy';
+import { AiAnnotationLinks } from './AiAnnotationLinks';
 import {
   advanceAiRequest,
   type AiCursor,
@@ -101,7 +102,11 @@ export function AiRequestsLayer({ paused = false }: { paused?: boolean }) {
         <AiRequestBubble
           key={job.id}
           job={job}
-          surface={surfaces.get(job.scope)}
+          surface={surfaces.get(
+            job.written && !job.answer?.annotations.length
+              ? job.written.scope
+              : job.scope,
+          )}
           theme={theme}
           onDocked={onDocked}
           order={order}
@@ -124,17 +129,20 @@ function AiRequestBubble({
   onDocked: (id: string, docked: boolean) => void;
   order: number;
 }) {
-  const { dismiss, retry } = useAiRequests();
+  const { dismiss, retry, reveal } = useAiRequests();
   const root = useRef<HTMLFormElement>(null);
   const missingAnchor = useRef<HTMLDivElement>(null);
   const pending = job.status === 'pending';
+  const annotations = job.answer?.annotations;
+  const writtenOnly = !!job.written && !annotations?.length;
   const position = useAiPromptPosition({
-    area: job.area,
+    area: writtenOnly ? job.written!.area : job.area,
     camera: surface?.camera ?? emptyCamera,
     anchor: surface?.anchor ?? missingAnchor,
     form: root,
     active: true,
     compact: pending,
+    preferredWidth: writtenOnly ? 305 : undefined,
     order,
   });
   const docked = pending && position.placement === 'page';
@@ -188,12 +196,47 @@ function AiRequestBubble({
             <div className="ai-request-text">{job.prompt}</div>
             <span className="ai-prompt-status" role="status">
               {job.status === 'success'
-                ? 'Risposta ricevuta'
+                ? job.written
+                  ? 'Contenuto aggiunto alla lavagna'
+                  : job.writeBlocked
+                    ? 'Spazio insufficiente nella selezione'
+                    : 'Risposta ricevuta'
                 : (job.error ?? 'Risposta non disponibile. Riprova.')}
             </span>
-            {job.status === 'success' && (
-              <div className="ai-prompt-response" tabIndex={0}>
-                {job.response}
+            {job.written && (
+              <button
+                type="button"
+                className="ai-written-reveal"
+                onClick={() => void reveal(job.id)}
+              >
+                Vai al contenuto
+              </button>
+            )}
+            {job.answer && (job.answer.response || !!annotations?.length) && (
+              <div
+                className={
+                  annotations?.length
+                    ? 'ai-prompt-response has-annotations'
+                    : 'ai-prompt-response'
+                }
+                tabIndex={0}
+              >
+                {job.answer.response}
+                {!!annotations?.length && (
+                  <ol
+                    className="ai-explanation-steps"
+                    aria-label="Passaggi della spiegazione"
+                  >
+                    {annotations.map((step, index) => (
+                      <li key={index}>
+                        <span className="ai-explanation-number" aria-hidden="true">
+                          {index + 1}
+                        </span>
+                        <span>{step.explanation}</span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
               </div>
             )}
           </div>
@@ -219,5 +262,19 @@ function AiRequestBubble({
       )}
     </form>
   );
-  return createPortal(content, document.body);
+  return createPortal(
+    <>
+      {!!annotations?.length && surface && (
+        <AiAnnotationLinks
+          area={job.area}
+          annotations={annotations}
+          surface={surface}
+          form={root}
+          position={position}
+        />
+      )}
+      {content}
+    </>,
+    document.body,
+  );
 }

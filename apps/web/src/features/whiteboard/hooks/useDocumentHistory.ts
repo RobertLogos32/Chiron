@@ -20,8 +20,8 @@ export function useDocumentHistory(
   const protection = useRef(protect);
   protection.current = protect;
   const commit = useCallback(
-    (update: NotesUpdate) =>
-      document.dispatch({ type: 'commit', update, protect: protection.current }),
+    (update: NotesUpdate, protectCommit = protection.current) =>
+      document.dispatch({ type: 'commit', update, protect: protectCommit }),
     [document],
   );
   const undo = useCallback(

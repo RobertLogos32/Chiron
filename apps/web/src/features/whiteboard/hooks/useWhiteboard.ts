@@ -1,8 +1,18 @@
 import { useRef } from 'react';
-import type Konva from 'konva';
+import Konva from 'konva';
 import { useElementSize } from '../../../shared/hooks/useElementSize';
-import type { Point, TextNote, Tool } from '../model/types';
+import { MIN_BOARD_TEXT_WIDTH, NOTE_FONT } from '../config/defaults';
+import type {
+  BoardWritePlacement,
+  Bounds,
+  Note,
+  Point,
+  TextNote,
+  Tool,
+} from '../model/types';
 import { clampBoardPoint } from '../lib/boardBounds';
+import { boardWriteSpaces } from '../lib/boardWritePlacement';
+import { protectLockedNotes } from '../lib/lockedAreas';
 import { useBoardHistory } from './useBoardHistory';
 import { useBoardAppearance } from './useBoardAppearance';
 import { useBoardCamera } from './useBoardCamera';
@@ -48,6 +58,7 @@ export function useWhiteboard({
     context: 'notebook',
     target: documentId ? { kind: 'notebook', resourceId: documentId, paneId } : undefined,
     ready: viewport.width > 1 && viewport.height > 1,
+    write: writeOnBoard,
     reveal: (area) => {
       editor.save();
       view.setCamera((previous) => revealAiCamera(area, previous, viewport));
@@ -120,6 +131,55 @@ export function useWhiteboard({
     return locks.blocksText({ ...note, ...point }) ? { x: note.x, y: note.y } : point;
   }
 
+  function writeOnBoard(
+    notes: TextNote[],
+    area: Bounds,
+    otherLockedAreas: Bounds[],
+    placement?: BoardWritePlacement,
+  ): Bounds | null {
+    const exactBounds = (note: Note): Bounds => {
+      if (note.type === 'text') return { x: note.x, y: note.y, ...textSize(note) };
+      const stage = stageRef.current;
+      return (
+        stage?.findOne(`#note-${note.id}`)?.getClientRect({ relativeTo: stage }) ??
+        boundsFor(note)
+      );
+    };
+    const minimum = {
+      width: Math.max(...notes.map((note) => note.latex?.width ?? MIN_BOARD_TEXT_WIDTH)),
+      height:
+        notes.reduce(
+          (sum, note) => sum + (note.latex?.height ?? note.fontSize * 1.5),
+          0,
+        ) +
+        (notes.length - 1) * 12,
+    };
+    let written: Bounds | null = null;
+    history.commit(
+      (current) => {
+        const occupied = current.map(exactBounds);
+        if (editor.draft) occupied.push(exactBounds({ ...editor.draft, type: 'text' }));
+        if (pointer.draft) occupied.push(boundsFor(pointer.draft));
+        const spaces = boardWriteSpaces(
+          area,
+          [...occupied, ...otherLockedAreas],
+          minimum,
+          placement,
+        );
+        for (const space of spaces) {
+          const block = fitWriteBlock(notes, space);
+          if (!block) continue;
+          written = block.bounds;
+          return [...current, ...block.notes];
+        }
+        return current;
+      },
+      (previous, next) =>
+        protectLockedNotes(previous, next, otherLockedAreas, exactBounds),
+    );
+    return written;
+  }
+
   function closeAi() {
     selection.closeAi();
     workspaceRef.current?.focus();
@@ -172,5 +232,40 @@ export function useWhiteboard({
     changeZoom,
     closeAi,
     saveError,
+  };
+}
+
+function fitWriteBlock(notes: TextNote[], space: Bounds) {
+  for (const width of new Set([Math.min(390, space.width), Math.min(600, space.width)])) {
+    const drafts = notes.map((note) => (note.latex ? note : { ...note, width }));
+    const sizes = drafts.map(textSize);
+    const size = {
+      width: Math.max(...sizes.map((item) => item.width)),
+      height: sizes.reduce((sum, item) => sum + item.height, 0) + (sizes.length - 1) * 12,
+    };
+    if (size.width > space.width || size.height > space.height) continue;
+    let y = space.y;
+    const placed = drafts.map((note, index) => {
+      const placedNote = { ...note, x: space.x, y };
+      y += sizes[index].height + 12;
+      return placedNote;
+    });
+    return { notes: placed, bounds: { x: space.x, y: space.y, ...size } };
+  }
+  return null;
+}
+
+function textSize(note: TextNote) {
+  if (note.latex) return note.latex;
+  const text = new Konva.Text({
+    text: note.text,
+    width: note.width ?? 600,
+    fontSize: note.fontSize,
+    fontFamily: NOTE_FONT,
+    lineHeight: 1.5,
+  });
+  return {
+    width: Math.max(1, Math.min(text.width(), text.getTextWidth())),
+    height: text.height(),
   };
 }

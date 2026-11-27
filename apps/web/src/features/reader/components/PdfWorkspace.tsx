@@ -124,14 +124,14 @@ export function PdfWorkspace({
             if (!pdf || !raster.ready || page.page?.pageNumber !== number) {
               throw new Error('PDF page is not ready');
             }
-            const image = captureAiSelection(
+            const capture = captureAiSelection(
               annotations.stageRef.current,
               annotations.workspaceRef.current,
               selection,
               annotations.camera,
               { pdf, size: page.size },
             );
-            annotations.ai.submit(selection, prompt, image);
+            annotations.ai.submit(capture.area, prompt, capture);
           }}
         />
       )}

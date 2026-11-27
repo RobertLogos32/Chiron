@@ -95,7 +95,7 @@ export function PdfCanvas({
             <Ink notes={[draft]} tool={tools.tool} theme="light" />
           )}
         </Layer>
-        <Layer {...clip} name="capture-ink">
+        <Layer {...clip} name="capture-ink capture-foreground">
           <Ink
             notes={ink}
             tool={tools.tool}

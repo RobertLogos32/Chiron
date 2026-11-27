@@ -98,7 +98,7 @@ export function WhiteboardCanvas({
             <Ink notes={[draft]} tool={tool} theme={theme} />
           )}
         </Layer>
-        <Layer name="capture-ink">
+        <Layer name="capture-ink capture-foreground">
           <Ink
             notes={foreground}
             editingId={editor.draft?.id}

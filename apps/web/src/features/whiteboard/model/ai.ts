@@ -1,7 +1,27 @@
-import type { Bounds, Camera, Theme } from './types';
+import type { BoardWritePlacement, Bounds, Camera, TextNote, Theme } from './types';
 import type { RefObject } from 'react';
 
 export type AiPromptRequest = { prompt: string; selection: Bounds };
+export type RegionBounds = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+};
+export type ExplainedRegion = RegionBounds & { explanation: string };
+export type AiCapture = {
+  image: string;
+  guide?: { image: string; regions: RegionBounds[] };
+};
+export type AiWrite = { kind: 'text' | 'latex'; content: string };
+export type AiWriteStyle = 'note' | 'solution';
+export type AiAnswer = {
+  response: string;
+  annotations: ExplainedRegion[];
+  writes: AiWrite[];
+  writePlacement?: BoardWritePlacement;
+  writeStyle?: AiWriteStyle;
+};
 export type AiTarget = {
   kind: 'pdf' | 'notebook';
   resourceId: string;
@@ -10,21 +30,25 @@ export type AiTarget = {
   paneId?: string;
 };
 export type AiPromptSender = (
-  request: AiPromptRequest & { scope: string; image: string },
+  request: AiPromptRequest & AiCapture & { scope: string; canWrite: boolean },
   signal: AbortSignal,
-) => Promise<string>;
+) => Promise<AiAnswer>;
 export type AiJob = {
   id: string;
   scope: string;
   prompt: string;
-  image?: string;
+  capture?: AiCapture;
   area: Bounds;
   status: 'pending' | 'success' | 'error';
-  response?: string;
+  answer?: AiAnswer;
   error?: string;
   target?: AiTarget;
   lockScope?: string;
+  destination?: AiBoardLocation;
+  written?: AiBoardLocation;
+  writeBlocked?: boolean;
 };
+export type AiBoardLocation = { scope: string; area: Bounds; target?: AiTarget };
 export type AiSurface = {
   anchor: RefObject<HTMLDivElement | null>;
   camera: Camera;
@@ -32,5 +56,11 @@ export type AiSurface = {
   context: 'pdf' | 'notebook';
   target?: AiTarget;
   reveal?: (area: Bounds) => void;
+  write?: (
+    notes: TextNote[],
+    area: Bounds,
+    otherLockedAreas: Bounds[],
+    placement?: BoardWritePlacement,
+  ) => Bounds | null;
   ready?: boolean;
 };

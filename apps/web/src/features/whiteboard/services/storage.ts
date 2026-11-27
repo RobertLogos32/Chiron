@@ -1,4 +1,4 @@
-import { DEFAULT_CAMERA } from '../config/defaults';
+import { DEFAULT_CAMERA, MIN_BOARD_TEXT_WIDTH } from '../config/defaults';
 import type { Appearance, Camera, Note } from '../model/types';
 
 // Keep the existing keys and document format so saved user notes remain compatible.
@@ -71,8 +71,18 @@ function isValidNote(note: Note, ids: Set<string>): boolean {
     Number.isFinite(note.fontSize) &&
     note.fontSize >= 12 &&
     note.fontSize <= 48 &&
+    (note.latex === undefined ||
+      (!!note.latex &&
+        Number.isFinite(note.latex.width) &&
+        Number.isFinite(note.latex.height) &&
+        note.latex.width > 0 &&
+        note.latex.width <= 600 &&
+        note.latex.height > 0 &&
+        note.latex.height <= 1600)) &&
     (note.width === undefined ||
-      (Number.isFinite(note.width) && note.width >= 160 && note.width <= 600))
+      (Number.isFinite(note.width) &&
+        note.width >= MIN_BOARD_TEXT_WIDTH &&
+        note.width <= 600))
   );
 }
 

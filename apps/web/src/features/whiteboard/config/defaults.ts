@@ -10,6 +10,8 @@ export const DARK_COLORS = [
   '#dcc77b',
 ];
 export const NOTE_FONT = 'Segoe Print, Comic Sans MS, cursive';
+export const MIN_BOARD_TEXT_WIDTH = 32;
+export const AI_INK_COLOR = '#c4520d';
 export const DEFAULT_CAMERA: Camera = { x: 0, y: 0, zoom: 1 };
 export const PATTERN_PERIOD: Record<Pattern, number> = {
   blank: 24,
