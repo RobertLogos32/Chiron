@@ -4,6 +4,7 @@ import { Image as CanvasImage, Line, Text } from 'react-konva';
 import { inkColor } from '../../model/appearance';
 import type { Note, Point, TextNote, Tool, Theme } from '../../model/types';
 import { NOTE_FONT } from '../../config/defaults';
+import { themedVisualSvg } from '../../model/visual';
 
 export function Ink({
   notes,
@@ -67,6 +68,20 @@ export function Ink({
           },
         };
         const color = inkColor(note.color, theme);
+        if (note.visual) {
+          const { svg, width, height } = note.visual;
+          return (
+            <VisualInk
+              key={note.id}
+              {...properties}
+              width={width}
+              height={height}
+              svg={themedVisualSvg(svg, theme)}
+              label={note.text}
+              color={color}
+            />
+          );
+        }
         return note.latex ? (
           <FormulaInk
             key={note.id}
@@ -90,6 +105,35 @@ export function Ink({
         );
       })}
     </>
+  );
+}
+
+function VisualInk({
+  svg,
+  label,
+  color,
+  ...properties
+}: Omit<Konva.ImageConfig, 'image'> & { svg: string; label: string; color: string }) {
+  const [image, setImage] = useState<HTMLImageElement>();
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const next = new Image();
+    next.onload = () => {
+      setImage(next);
+      setFailed(false);
+    };
+    next.onerror = () => setFailed(true);
+    next.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    return () => {
+      next.onload = null;
+      next.onerror = null;
+    };
+  }, [svg]);
+
+  return failed ? (
+    <Text {...properties} text={label} fontSize={18} fill={color} />
+  ) : (
+    <CanvasImage {...properties} image={image} />
   );
 }
 

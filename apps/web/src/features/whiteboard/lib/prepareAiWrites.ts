@@ -20,7 +20,9 @@ export async function prepareAiWrites(
       color: style === 'note' ? DEFAULT_COLORS.text : AI_INK_COLOR,
       fontSize: write.kind === 'latex' ? 26 : 20,
     };
-    if (write.kind === 'latex') {
+    if (write.kind === 'visual') {
+      note.visual = write.visual;
+    } else if (write.kind === 'latex') {
       try {
         note.text = unwrapLatex(note.text);
         const { renderLatex } = await import('./renderLatex');

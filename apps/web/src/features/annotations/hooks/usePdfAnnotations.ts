@@ -7,12 +7,26 @@ import { useBoardShortcuts } from '@whiteboard/hooks/useBoardShortcuts';
 import { useMeasuredBounds } from '@whiteboard/hooks/useMeasuredBounds';
 import { useTextEditor } from '@whiteboard/hooks/useTextEditor';
 import { useDrawingTools } from '@whiteboard/hooks/useDrawingTools';
-import type { Point, Size, TextNote, Tool, Theme } from '@whiteboard/model/types';
+import type {
+  BoardWritePlacement,
+  Bounds,
+  Note,
+  Point,
+  Size,
+  TextNote,
+  Tool,
+  Theme,
+} from '@whiteboard/model/types';
 import { usePdfCamera } from '../../reader/hooks/usePdfCamera';
 import { usePageAnnotations } from './usePageAnnotations';
 import { useAiScope, useAiSurface } from '@whiteboard/hooks/useAiRequests';
 import { useLockedAreas } from '@whiteboard/hooks/useLockedAreas';
 import { revealAiCamera } from '@whiteboard/lib/aiNavigation';
+import { fitWriteBlock, minimumTextWidth, textSize } from '@whiteboard/lib/fitWriteBlock';
+import { protectLockedNotes } from '@whiteboard/lib/lockedAreas';
+import { pdfWriteSpace } from '../lib/pdfWriteSpace';
+
+type PageContent = { canvas: HTMLCanvasElement; obstacles: Bounds[] };
 
 export function usePdfAnnotations(
   id: string,
@@ -24,6 +38,7 @@ export function usePdfAnnotations(
   resourceId?: string,
   ready = true,
   paneId?: string,
+  getPageContent?: () => PageContent | null,
 ) {
   const stageRef = useRef<Konva.Stage>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -51,6 +66,7 @@ export function usePdfAnnotations(
       ? { kind: 'pdf', resourceId, page: pageNumber, pageHeight: pageSize.height, paneId }
       : undefined,
     ready: ready && viewport.width > 1 && viewport.height > 1,
+    write: getPageContent ? writeOnPdf : undefined,
     reveal: (area) => {
       editor.save();
       view.setCamera((previous) => revealAiCamera(area, previous, viewport));
@@ -111,6 +127,90 @@ export function usePdfAnnotations(
     };
     return locks.blocksText({ ...note, ...point }) ? { x: note.x, y: note.y } : point;
   }
+  function writeOnPdf(
+    notes: TextNote[],
+    selection: Bounds,
+    otherLockedAreas: Bounds[],
+    placement?: BoardWritePlacement,
+  ): Bounds | null | undefined {
+    const page = getPageContent?.();
+    // The page is still rendering: the provider retries once it is ready.
+    if (!page?.canvas.width || !page.canvas.height) return undefined;
+    const raster = page.canvas
+      .getContext('2d')
+      ?.getImageData(0, 0, page.canvas.width, page.canvas.height);
+    if (!raster) return undefined;
+    const exactBounds = (note: Note): Bounds => {
+      if (note.type === 'text') return { x: note.x, y: note.y, ...textSize(note) };
+      const stage = stageRef.current;
+      return (
+        stage?.findOne(`#note-${note.id}`)?.getClientRect({ relativeTo: stage }) ??
+        boundsFor(note)
+      );
+    };
+    let written: Bounds | null = null;
+    history.commit(
+      (current) => {
+        const occupied = [
+          ...page.obstacles,
+          ...current.map(exactBounds),
+          ...otherLockedAreas,
+        ];
+        if (editor.draft) occupied.push(exactBounds({ ...editor.draft, type: 'text' }));
+        if (pointer.draft) occupied.push(exactBounds(pointer.draft));
+        const findSpace = pdfWriteSpace(pageSize, raster, occupied);
+        let best:
+          | {
+              block: NonNullable<ReturnType<typeof fitWriteBlock>>;
+              position: Point;
+              score: number;
+            }
+          | undefined;
+        for (const fontSize of [16, 14, 12]) {
+          const adjusted = notes.map((note) =>
+            note.latex || note.visual ? note : { ...note, fontSize },
+          );
+          // Keep words whole: a narrower block would split the solution letter by letter.
+          const narrowest = Math.max(
+            40,
+            ...adjusted.map((note) =>
+              note.latex || note.visual ? 0 : Math.min(76, minimumTextWidth(note)),
+            ),
+          );
+          for (const width of new Set(
+            [390, 260, 180, 120, 76].map((value) => Math.min(value, pageSize.width)),
+          )) {
+            if (width < narrowest) continue;
+            const block = fitWriteBlock(adjusted, {
+              x: 0,
+              y: 0,
+              width,
+              height: pageSize.height,
+            });
+            if (!block) continue;
+            const position = findSpace(selection, block.bounds, placement);
+            if (!position) continue;
+            const score = position.score + (16 - fontSize) * 2;
+            if (!best || score < best.score) best = { block, position, score };
+          }
+        }
+        if (!best) return current;
+        const { block, position } = best;
+        written = { ...block.bounds, x: position.x, y: position.y };
+        return [
+          ...current,
+          ...block.notes.map((note) => ({
+            ...note,
+            x: note.x + position.x,
+            y: note.y + position.y,
+          })),
+        ];
+      },
+      (previous, next) =>
+        protectLockedNotes(previous, next, otherLockedAreas, exactBounds),
+    );
+    return written;
+  }
   function closeAi() {
     selection.closeAi();
     workspaceRef.current?.focus();
@@ -132,6 +232,7 @@ export function usePdfAnnotations(
       undo,
       redo,
       changeZoom,
+      cancelAiRequest: ai.cancelSelected,
     },
     active,
   );

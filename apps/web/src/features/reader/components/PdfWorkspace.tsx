@@ -7,12 +7,18 @@ import { usePdfAnnotations } from '../../annotations/hooks/usePdfAnnotations';
 import { usePdfPage } from '../hooks/usePdfPage';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { boundedPage } from '../lib/pageCamera';
+import {
+  hasPdfFractionBar,
+  pdfGlyphsWithinSelection,
+  selectedPdfText,
+} from '../lib/pdfSelectionText';
 import type { LoadedPdf } from '../model/types';
 import { PdfCanvas } from './PdfCanvas';
 import { PdfHeader } from './PdfHeader';
 import { useAiRequests } from '@whiteboard/hooks/useAiRequests';
 import { captureAiSelection } from '@whiteboard/lib/captureAiSelection';
 import { usePdfRaster } from '../hooks/usePdfRaster';
+import { pdfImageBounds } from '../../annotations/lib/pdfWriteSpace';
 
 type PdfWorkspaceProps = {
   source: LoadedPdf;
@@ -34,6 +40,7 @@ export function PdfWorkspace({
   paneId,
 }: PdfWorkspaceProps) {
   const [number, setNumber] = useState(1);
+  const canvas = useRef<HTMLCanvasElement>(null);
   const page = usePdfPage(source.document, number);
   const { navigation } = useAiRequests();
   const annotations = usePdfAnnotations(
@@ -46,8 +53,8 @@ export function PdfWorkspace({
     resourceId,
     page.page?.pageNumber === number,
     paneId,
+    getPageContent,
   );
-  const canvas = useRef<HTMLCanvasElement>(null);
   const raster = usePdfRaster(canvas, page.page, annotations.camera.zoom);
   useEffect(() => {
     if (
@@ -59,6 +66,17 @@ export function PdfWorkspace({
       changePage(navigation.target.page);
     }
   }, [navigation?.jobId, resourceId, paneId]);
+
+  function getPageContent() {
+    if (!canvas.current || !raster.ready || page.page?.pageNumber !== number) return null;
+    return {
+      canvas: canvas.current,
+      obstacles: [
+        ...page.textRuns.map(({ bounds }) => bounds),
+        ...pdfImageBounds(page.page.imageCoordinates ?? [], page.size),
+      ],
+    };
+  }
 
   function changePage(value: number) {
     const next = boundedPage(value, source.document.numPages);
@@ -131,7 +149,16 @@ export function PdfWorkspace({
               annotations.camera,
               { pdf, size: page.size },
             );
-            annotations.ai.submit(capture.area, prompt, capture);
+            const pdfText = selectedPdfText(
+              page.textRuns,
+              capture.area,
+              (area) => hasPdfFractionBar(pdf, page.size, area),
+              (bounds) => pdfGlyphsWithinSelection(pdf, page.size, bounds, capture.area),
+            );
+            annotations.ai.submit(capture.area, prompt, {
+              ...capture,
+              source: pdfText ? { pdf_text: pdfText } : undefined,
+            });
           }}
         />
       )}

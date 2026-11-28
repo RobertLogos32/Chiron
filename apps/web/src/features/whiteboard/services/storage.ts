@@ -1,5 +1,6 @@
 import { DEFAULT_CAMERA, MIN_BOARD_TEXT_WIDTH } from '../config/defaults';
 import type { Appearance, Camera, Note } from '../model/types';
+import { isBoardVisual } from '../model/visual.ts';
 
 // Keep the existing keys and document format so saved user notes remain compatible.
 const DOCUMENT_KEY = 'quaderno.board.v1';
@@ -71,6 +72,8 @@ function isValidNote(note: Note, ids: Set<string>): boolean {
     Number.isFinite(note.fontSize) &&
     note.fontSize >= 12 &&
     note.fontSize <= 48 &&
+    (note.visual === undefined ||
+      (note.latex === undefined && isBoardVisual(note.visual))) &&
     (note.latex === undefined ||
       (!!note.latex &&
         Number.isFinite(note.latex.width) &&

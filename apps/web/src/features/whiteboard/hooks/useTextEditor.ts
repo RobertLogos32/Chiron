@@ -35,7 +35,7 @@ export function useTextEditor(
   ) => {
     const existing = notes.find((note) => note.id === id);
     if (existing?.type === 'text') {
-      if (existing.latex || isBlocked?.(existing)) return;
+      if (existing.latex || existing.visual || isBlocked?.(existing)) return;
       setDraft(existing);
       return;
     }

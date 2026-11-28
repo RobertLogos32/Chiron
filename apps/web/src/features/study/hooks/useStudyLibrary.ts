@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { createDemoDocument } from '../../reader/lib/demoDocument';
+import { checkPdfs, unreadableMessage } from '../services/pdfCheck';
 import {
   emptyLibrary,
   SUBJECT_COLORS,
@@ -49,6 +50,11 @@ export function useStudyLibrary() {
 
   async function addSubject(name: string, color: string, files: File[]) {
     validatePdfs(files);
+    const { unreadable } = await checkPdfs(files);
+    if (unreadable.length)
+      throw new Error(
+        `${unreadableMessage(unreadable, 0)} Rimuovilo dalla selezione per creare la materia.`,
+      );
     const subject = { id: crypto.randomUUID(), name: name.trim(), color };
     const resources = makePdfs(subject.id, files);
     await storeFiles(
@@ -63,8 +69,11 @@ export function useStudyLibrary() {
     return subject.id;
   }
 
-  async function addPdfs(subjectId: string, files: File[]) {
-    validatePdfs(files);
+  async function addPdfs(subjectId: string, selected: File[]) {
+    validatePdfs(selected);
+    // Unreadable files are left out, so they never reach the library with a blank cover.
+    const { readable: files, unreadable } = await checkPdfs(selected);
+    if (!files.length) throw new Error(unreadableMessage(unreadable, 0));
     const resources = makePdfs(subjectId, files);
     await storeFiles(
       resources.map((resource, index) => ({ id: resource.id, file: files[index] })),
@@ -73,7 +82,10 @@ export function useStudyLibrary() {
       ...current.current,
       resources: [...current.current.resources, ...resources],
     });
-    return resources;
+    return {
+      resources,
+      warning: unreadable.length ? unreadableMessage(unreadable, files.length) : '',
+    };
   }
 
   function addNotebook(subjectId: string, name: string, color: string) {

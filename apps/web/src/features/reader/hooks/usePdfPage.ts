@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
-import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist';
+import { OPS, type PDFDocumentProxy, type PDFPageProxy } from 'pdfjs-dist';
 import type { Size } from '@whiteboard/model/types';
+import {
+  mayHaveDoubledMathGlyph,
+  pdfMathGlyphRepairs,
+  pdfTextRuns,
+  type PdfTextRun,
+} from '../lib/pdfSelectionText';
 
 export function usePdfPage(document: PDFDocumentProxy, number: number) {
   const [state, setState] = useState<{
@@ -8,18 +14,27 @@ export function usePdfPage(document: PDFDocumentProxy, number: number) {
     page: PDFPageProxy | null;
     size: Size;
     text: string;
+    textRuns: PdfTextRun[];
     error: string | null;
   }>({
     number,
     page: null,
     size: { width: 595, height: 842 },
     text: '',
+    textRuns: [],
     error: null,
   });
 
   useEffect(() => {
     let cancelled = false;
-    setState((previous) => ({ ...previous, number, page: null, text: '', error: null }));
+    setState((previous) => ({
+      ...previous,
+      number,
+      page: null,
+      text: '',
+      textRuns: [],
+      error: null,
+    }));
     void document
       .getPage(number)
       .then(async (page) => {
@@ -30,17 +45,29 @@ export function usePdfPage(document: PDFDocumentProxy, number: number) {
           page,
           size: { width: viewport.width, height: viewport.height },
           text: '',
+          textRuns: [],
           error: null,
         });
         // Text extraction is optional: an image-only PDF can still be rendered and annotated.
         try {
           const content = await page.getTextContent();
+          const needsGlyphCheck = content.items.some(
+            (item) => 'str' in item && mayHaveDoubledMathGlyph.test(item.str),
+          );
+          const operators = needsGlyphCheck
+            ? await page.getOperatorList().catch(() => undefined)
+            : undefined;
           if (!cancelled)
             setState((previous) => ({
               ...previous,
               text: content.items
                 .map((item) => ('str' in item ? item.str : ''))
                 .join(' '),
+              textRuns: pdfTextRuns(
+                content,
+                viewport,
+                operators && pdfMathGlyphRepairs(operators, OPS),
+              ),
             }));
         } catch {
           /* Keep the rendered page available. */
@@ -60,5 +87,5 @@ export function usePdfPage(document: PDFDocumentProxy, number: number) {
 
   return state.number === number
     ? state
-    : { ...state, page: null, text: '', error: null };
+    : { ...state, page: null, text: '', textRuns: [], error: null };
 }

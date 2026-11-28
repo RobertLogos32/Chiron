@@ -1,11 +1,12 @@
 import type Konva from 'konva';
 import { PATTERN_PERIOD } from '../config/defaults';
-import type { Bounds, Camera, Pattern, Size } from '../model/types';
-import type { AiCapture } from '../model/ai';
-import { rectangle, screenToWorld } from './geometry';
+import type { Bounds, Camera, Note, Pattern, Size } from '../model/types';
+import type { AiCapture, AiInkStroke, AiSelectionSource } from '../model/ai';
+import { clipStroke, rectangle, screenToWorld } from './geometry';
 import { createAiGuide } from './createAiGuide';
 
-type SurfaceContent = { pattern: Pattern } | { pdf: HTMLCanvasElement; size: Size };
+type SurfaceContent =
+  { pattern: Pattern; notes: Note[] } | { pdf: HTMLCanvasElement; size: Size };
 
 export function captureAiSelection(
   stage: Konva.Stage | null,
@@ -25,8 +26,7 @@ export function captureAiSelection(
   if (width <= 0 || height <= 0) throw new Error('Selection is outside the surface');
 
   const density = Math.min(
-    window.devicePixelRatio || 1,
-    2,
+    'pdf' in content ? 2 : Math.min(window.devicePixelRatio || 1, 2),
     1536 / Math.max(width, height),
   );
   const output = document.createElement('canvas');
@@ -70,14 +70,94 @@ export function captureAiSelection(
       ink?.drawImage(canvas, 0, 0, stage.width(), stage.height());
     }
   }
+  const capturedArea = rectangle(
+    screenToWorld({ x, y }, camera),
+    screenToWorld({ x: x + width, y: y + height }, camera),
+  );
   return {
     image: output.toDataURL('image/png'),
     guide: ink ? createAiGuide(output, ink, 'pdf' in content) : undefined,
-    area: rectangle(
-      screenToWorld({ x, y }, camera),
-      screenToWorld({ x: x + width, y: y + height }, camera),
-    ),
+    source:
+      'notes' in content ? captureSource(stage, capturedArea, content.notes) : undefined,
+    area: capturedArea,
   };
+}
+
+function captureSource(
+  stage: Konva.Stage,
+  area: Bounds,
+  notes: Note[],
+): AiSelectionSource | undefined {
+  const lines: { text: string; x: number; y: number }[] = [];
+  const traces: { stroke: AiInkStroke; span: number }[] = [];
+  const scale = 1000 / Math.max(area.width, area.height);
+  const normalize = (distance: number) =>
+    Math.max(0, Math.min(1000, Math.round(distance * scale)));
+
+  for (const note of notes) {
+    if (note.type === 'text') {
+      if (note.latex || note.visual || !note.text.trim()) continue;
+      const node = stage.findOne<Konva.Text>(`#note-${note.id}`);
+      if (!node?.isVisible()) continue;
+      let bounds = {
+        x: note.x,
+        y: note.y,
+        width: Math.min(node.getTextWidth(), node.width()),
+        height: node.height(),
+      };
+      const lineHeight = node.fontSize() * node.lineHeight();
+      if (!note.text.includes('\n') && bounds.height === lineHeight) {
+        // A selection can include every glyph without including the line's leading.
+        const font = node.measureSize('M');
+        const glyphs = node.measureSize(note.text);
+        const baseline =
+          note.y +
+          (lineHeight + font.fontBoundingBoxAscent - font.fontBoundingBoxDescent) / 2;
+        bounds = {
+          x: note.x - glyphs.actualBoundingBoxLeft,
+          y: baseline - glyphs.actualBoundingBoxAscent,
+          width: glyphs.actualBoundingBoxLeft + glyphs.actualBoundingBoxRight,
+          height: glyphs.actualBoundingBoxAscent + glyphs.actualBoundingBoxDescent,
+        };
+      }
+      if (
+        bounds.x >= area.x &&
+        bounds.y >= area.y &&
+        bounds.x + bounds.width <= area.x + area.width &&
+        bounds.y + bounds.height <= area.y + area.height
+      ) {
+        lines.push(note);
+      }
+    } else if (note.tool === 'pen' && /^#[0-9a-f]{6}$/i.test(note.color)) {
+      for (const part of clipStroke(note.points, area)) {
+        const count = Math.min(part.length, 160);
+        const points: AiInkStroke['points'] = Array.from(
+          { length: count },
+          (_, index) => {
+            const point = part[Math.round((index * (part.length - 1)) / (count - 1))];
+            return [normalize(point.x - area.x), normalize(point.y - area.y)];
+          },
+        );
+        const xs = points.map(([x]) => x);
+        const ys = points.map(([, y]) => y);
+        const span = Math.hypot(
+          Math.max(...xs) - Math.min(...xs),
+          Math.max(...ys) - Math.min(...ys),
+        );
+        if (span > 0) traces.push({ stroke: { color: note.color, points }, span });
+      }
+    }
+  }
+  const selectedText = lines
+    .sort((a, b) => a.y - b.y || a.x - b.x)
+    .map((line) => line.text)
+    .join('\n\n');
+  const text = selectedText.length <= 8000 ? selectedText : '';
+  const strokes = traces
+    .sort((a, b) => b.span - a.span)
+    .slice(0, 48)
+    .map(({ stroke }) => stroke);
+  return text || strokes.length ? { text: text || undefined, strokes } : undefined;
 }
 
 function drawPattern(

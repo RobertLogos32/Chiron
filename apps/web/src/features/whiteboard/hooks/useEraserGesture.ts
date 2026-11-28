@@ -34,7 +34,20 @@ export function useEraserGesture(
       },
       finish() {
         setPreview(null);
-        if (notes !== original) commit(() => notes);
+        if (notes === original) return;
+        // Another view of the same page may have added notes during the gesture: apply only
+        // what this eraser changed instead of replacing the page with its own snapshot.
+        const kept = new Set(notes);
+        const removed = new Set(
+          original.filter((note) => !kept.has(note)).map((note) => note.id),
+        );
+        const known = new Set(original);
+        const added = notes.filter((note) => !known.has(note));
+        commit((current) =>
+          current === original
+            ? notes
+            : [...current.filter((note) => !removed.has(note.id)), ...added],
+        );
       },
     };
   }

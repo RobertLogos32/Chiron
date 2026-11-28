@@ -1,4 +1,4 @@
-import type { AiJob, AiTarget } from '../model/ai';
+import type { AiBoardLocation, AiJob, AiTarget } from '../model/ai';
 import type { Bounds, Camera, Size } from '../model/types';
 
 export type AiView = { scope: string; camera: Camera; pane: Bounds; target?: AiTarget };
@@ -7,52 +7,60 @@ export type AiCursor = { id: string | null; direction: AiDirection };
 
 const pageTop = (target?: AiTarget) =>
   target?.kind === 'pdf' ? ((target.page ?? 1) - 1) * (target.pageHeight ?? 842) : 0;
-const resultTop = (job: AiJob) => pageTop(job.target) + job.area.y;
+
+export function answerLocation(job: AiJob): AiBoardLocation {
+  return job.written && !job.answer?.annotations.length ? job.written : job;
+}
+
+const resultTop = (location: AiBoardLocation) =>
+  pageTop(location.target) + location.area.y;
 
 export function advanceAiRequest(
   jobs: AiJob[],
   views: AiView[],
   cursor: AiCursor,
   requestedDirection?: AiDirection,
+  dockedAnswers: AiJob[] = [],
 ): { job: AiJob; cursor: AiCursor } | undefined {
-  const ordered = jobs
-    .filter((job) => job.status === 'pending')
+  const ordered = [...jobs.filter((job) => job.status === 'pending'), ...dockedAnswers]
+    .map((job) => ({ job, location: answerLocation(job) }))
     .sort(
-      (a, b) =>
+      ({ location: a }, { location: b }) =>
         resultTop(a) - resultTop(b) ||
         Number(a.target?.kind !== 'pdf') - Number(b.target?.kind !== 'pdf') ||
         a.area.x - b.area.x,
     );
   if (!ordered.length) return;
   let direction = requestedDirection ?? cursor.direction;
-  const index = ordered.findIndex((job) => job.id === cursor.id);
+  const index = ordered.findIndex(({ job }) => job.id === cursor.id);
   if (index >= 0) {
     let next = index + (direction === 'up' ? -1 : 1);
     if (next < 0 || next >= ordered.length) {
       direction = direction === 'up' ? 'down' : 'up';
       next = index + (direction === 'up' ? -1 : 1);
     }
-    const job = ordered[Math.max(0, Math.min(ordered.length - 1, next))];
+    const { job } = ordered[Math.max(0, Math.min(ordered.length - 1, next))];
     return { job, cursor: { id: job.id, direction } };
   }
 
   // Begin with the closest result above the current view. Thereafter the
   // stable document order drives navigation, not the camera movement we cause.
-  const distances = ordered.flatMap((job) => {
+  const distances = ordered.flatMap(({ job, location }) => {
+    const { scope, target, area } = location;
     const view =
-      views.find((item) => item.scope === job.scope) ??
+      views.find((item) => item.scope === scope) ??
       views.find(
         (item) =>
-          job.target &&
-          item.target?.resourceId === job.target.resourceId &&
-          item.target.kind === job.target.kind,
+          target &&
+          item.target?.resourceId === target.resourceId &&
+          item.target.kind === target.kind,
       );
     if (!view || view.pane.width <= 0 || view.pane.height <= 0 || view.camera.zoom <= 0)
       return [];
     const center =
       pageTop(view.target) + (view.pane.height / 2 - view.camera.y) / view.camera.zoom;
     return [
-      { job, delta: (resultTop(job) + job.area.height / 2 - center) * view.camera.zoom },
+      { job, delta: (resultTop(location) + area.height / 2 - center) * view.camera.zoom },
     ];
   });
   let candidates = distances.filter((item) =>
@@ -65,7 +73,7 @@ export function advanceAiRequest(
     );
   }
   candidates.sort((a, b) => Math.abs(a.delta) - Math.abs(b.delta));
-  const job = candidates[0]?.job ?? ordered[0];
+  const job = candidates[0]?.job ?? ordered[0].job;
   return { job, cursor: { id: job.id, direction } };
 }
 

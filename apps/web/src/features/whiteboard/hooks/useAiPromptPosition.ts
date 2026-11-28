@@ -1,7 +1,7 @@
 import { useLayoutEffect, useState, type RefObject } from 'react';
 import type { Bounds, Camera } from '../model/types';
 import { positionPrompt } from '../lib/getPromptPosition';
-import { positionAiBuddy } from '../lib/getAiBuddyPosition';
+import { isAiAreaVisible, positionAiBuddy } from '../lib/getAiBuddyPosition';
 
 type Position = {
   x: number;
@@ -17,8 +17,10 @@ export function useAiPromptPosition({
   form,
   active,
   compact = false,
+  dockWhenOffscreen = false,
   preferredWidth,
   order,
+  avoid,
 }: {
   area: Bounds;
   camera: Camera;
@@ -26,8 +28,11 @@ export function useAiPromptPosition({
   form: RefObject<HTMLElement | null>;
   active: boolean;
   compact?: boolean;
+  dockWhenOffscreen?: boolean;
   preferredWidth?: number;
   order?: number;
+  /** Extra elements to keep clear, such as the buttons of the library for the global buddy. */
+  avoid?: string;
 }) {
   const [position, setPosition] = useState<Position>({
     x: 12,
@@ -58,7 +63,7 @@ export function useAiPromptPosition({
         '.toolbar, .study-workspace-tools, .ai-selection-hint, .selection-actions',
       ),
       ...Array.from(
-        document.querySelectorAll<HTMLElement>('.ai-task[data-order]'),
+        document.querySelectorAll<HTMLElement>('.ai-task[data-order]:not(.is-docked)'),
       ).filter((task) => order !== undefined && Number(task.dataset.order) < order),
     ];
 
@@ -98,12 +103,37 @@ export function useAiPromptPosition({
         x: camera.x + source.left - left,
         y: camera.y + source.top - top,
       };
+      const paneLeft = Math.max(left, source.left);
+      const paneTop = Math.max(top, source.top);
+      const pane = {
+        x: paneLeft,
+        y: paneTop,
+        width: Math.max(0, Math.min(right, source.right) - paneLeft),
+        height: Math.max(0, Math.min(bottom, source.bottom) - paneTop),
+      };
+      const screenCamera = {
+        ...camera,
+        x: camera.x + source.left,
+        y: camera.y + source.top,
+      };
       const height = element.getBoundingClientRect().height;
       let value: Position;
-      if (compact) {
-        const paneLeft = Math.max(left, source.left);
-        const paneTop = Math.max(top, source.top);
-        const obstacles: Bounds[] = controls()
+      if (
+        dockWhenOffscreen &&
+        (!surface?.checkVisibility() || !isAiAreaVisible(area, screenCamera, pane))
+      ) {
+        value = { x: left, y: top, width, placement: 'page' };
+      } else if (compact) {
+        // Only the controls near the bottom-right corner, where the buddy docks, matter.
+        const corner = { left: right - 320, top: bottom - 320 };
+        const extra = avoid
+          ? Array.from(document.querySelectorAll<HTMLElement>(avoid)).filter((item) => {
+              if (element.contains(item) || item.closest('.ai-task')) return false;
+              const rect = item.getBoundingClientRect();
+              return rect.right > corner.left && rect.bottom > corner.top;
+            })
+          : [];
+        const obstacles: Bounds[] = [...controls(), ...extra]
           .filter((control) => control.checkVisibility())
           .map((control) => {
             const rect = control.getBoundingClientRect();
@@ -112,13 +142,8 @@ export function useAiPromptPosition({
         value = {
           ...positionAiBuddy({
             area,
-            camera: { ...camera, x: camera.x + source.left, y: camera.y + source.top },
-            pane: {
-              x: paneLeft,
-              y: paneTop,
-              width: Math.max(0, Math.min(right, source.right) - paneLeft),
-              height: Math.max(0, Math.min(bottom, source.bottom) - paneTop),
-            },
+            camera: screenCamera,
+            pane,
             viewport: { x: left, y: top, ...viewport },
             size: { width, height },
             obstacles,
@@ -128,6 +153,38 @@ export function useAiPromptPosition({
       } else {
         const next = positionPrompt(area, relativeCamera, viewport, width, height);
         value = { x: left + next.x, y: top + next.y, width, placement: 'prompt' };
+        // Earlier answers keep their place: move this one below them, or above if it does not fit.
+        const earlier = Array.from(
+          document.querySelectorAll<HTMLElement>('.ai-task[data-order]:not(.is-docked)'),
+        )
+          .filter(
+            (task) =>
+              task !== element &&
+              order !== undefined &&
+              Number(task.dataset.order) < order,
+          )
+          .map((task) => task.getBoundingClientRect());
+        const overlapping = (y: number) =>
+          earlier.find(
+            (rect) =>
+              value.x < rect.right &&
+              value.x + width > rect.left &&
+              y < rect.bottom + 8 &&
+              y + height > rect.top - 8,
+          );
+        let y = value.y;
+        for (let guard = 0, hit = overlapping(y); hit && guard < 8; guard++) {
+          y = hit.bottom + 8;
+          hit = overlapping(y);
+        }
+        if (y + height > bottom - 12) {
+          y = value.y;
+          for (let guard = 0, hit = overlapping(y); hit && guard < 8; guard++) {
+            y = hit.top - 8 - height;
+            hit = overlapping(y);
+          }
+        }
+        value.y = Math.max(top + 12, y);
       }
       setPosition((previous) => {
         return previous.x === value.x &&
@@ -143,9 +200,19 @@ export function useAiPromptPosition({
     const observer = new ResizeObserver(update);
     for (const target of new Set([surface, findWorkspace(), element, ...controls()]))
       if (target) observer.observe(target);
+    // An answer moves when an earlier one moves: follow their positions too.
+    const moves = new MutationObserver(update);
+    const followEarlier = () => {
+      if (order === undefined) return;
+      for (const task of document.querySelectorAll<HTMLElement>('.ai-task[data-order]'))
+        if (task !== element && Number(task.dataset.order) < order)
+          moves.observe(task, { attributes: true, attributeFilter: ['style'] });
+    };
+    followEarlier();
     const mutations = new MutationObserver(() => {
       observer.observe(findWorkspace());
       for (const control of controls()) observer.observe(control);
+      followEarlier();
       update();
     });
     mutations.observe(document.body, {
@@ -161,6 +228,7 @@ export function useAiPromptPosition({
     return () => {
       observer.disconnect();
       mutations.disconnect();
+      moves.disconnect();
       window.removeEventListener('resize', update);
       document.removeEventListener('scroll', update, true);
       visibleViewport?.removeEventListener('resize', update);
@@ -169,8 +237,10 @@ export function useAiPromptPosition({
   }, [
     active,
     compact,
+    dockWhenOffscreen,
     preferredWidth,
     order,
+    avoid,
     anchor,
     form,
     area,

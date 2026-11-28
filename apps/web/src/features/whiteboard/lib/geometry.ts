@@ -29,7 +29,9 @@ export function rectangle(a: Point, b: Point): Bounds {
 
 export function noteBounds(note: Note): Bounds {
   if (note.type === 'text') {
-    if (note.latex) return { x: note.x, y: note.y, ...note.latex };
+    const fixedSize = note.latex ?? note.visual;
+    if (fixedSize)
+      return { x: note.x, y: note.y, width: fixedSize.width, height: fixedSize.height };
     const width = note.width ?? 600;
     const lines = note.text.split('\n');
     const rows = lines.reduce(
@@ -101,6 +103,28 @@ function segmentRect(a: Point, b: Point, rect: Bounds): Interval | null {
     if (from > to) return null;
   }
   return [from, to];
+}
+
+export function clipStroke(points: number[], rect: Bounds): Point[][] {
+  const parts: Point[][] = [];
+  let part: Point[] | undefined;
+  for (let index = 2; index < points.length; index += 2) {
+    const a = { x: points[index - 2], y: points[index - 1] };
+    const b = { x: points[index], y: points[index + 1] };
+    const interval = segmentRect(a, b, rect);
+    if (!interval || interval[0] === interval[1]) {
+      part = undefined;
+      continue;
+    }
+    const [from, to] = interval;
+    if (!part || from > 0) {
+      part = [lerp(a, b, from)];
+      parts.push(part);
+    }
+    part.push(lerp(a, b, to));
+    if (to < 1) part = undefined;
+  }
+  return parts;
 }
 
 function segmentCircle(

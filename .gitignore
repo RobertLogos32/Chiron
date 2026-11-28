@@ -5,3 +5,4 @@ dist/
 .verification/
 .venv
 .env
+COLLAUDO.md

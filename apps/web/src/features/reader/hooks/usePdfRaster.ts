@@ -32,6 +32,7 @@ export function usePdfRaster(
     const task = page.render({
       canvas: buffer,
       viewport,
+      recordImages: true,
     });
     void task.promise
       .then(() => {

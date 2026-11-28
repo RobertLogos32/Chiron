@@ -52,3 +52,15 @@ test('un caricamento misto o troppo grande viene rifiutato prima di salvare', ()
   assert.throws(() => validatePdfs([{ ...pdf, size: MAX_PDF_SIZE + 1 }]), /50 MB/);
   assert.throws(() => validatePdfs([{ ...pdf, size: 0 }]), /vuoto/);
 });
+
+test('un gruppo rifiutato dice che nessun file è stato aggiunto', () => {
+  const pdf = { name: 'Appunti.pdf', type: 'application/pdf', size: 10 };
+  assert.throws(
+    () => validatePdfs([pdf, { name: 'nota.txt', type: 'text/plain', size: 10 }]),
+    /nota\.txt.*Nessuno dei file selezionati è stato aggiunto/,
+  );
+  assert.throws(
+    () => validatePdfs([{ name: 'nota.txt', type: 'text/plain', size: 10 }]),
+    (error) => !error.message.includes('Nessuno'),
+  );
+});

@@ -1,4 +1,5 @@
 import type { Bounds, Camera, Point, Size } from '../model/types';
+import { intersectBounds } from './aiAnnotations.ts';
 
 type BuddyPosition = Point & { placement: 'selection' | 'page' };
 const margin = 12;
@@ -13,6 +14,17 @@ const contains = (outer: Bounds, inner: Bounds) =>
   inner.y >= outer.y + margin &&
   inner.x + inner.width <= outer.x + outer.width - margin &&
   inner.y + inner.height <= outer.y + outer.height - margin;
+
+const screenArea = (area: Bounds, camera: Camera): Bounds => ({
+  x: area.x * camera.zoom + camera.x,
+  y: area.y * camera.zoom + camera.y,
+  width: area.width * camera.zoom,
+  height: area.height * camera.zoom,
+});
+
+export function isAiAreaVisible(area: Bounds, camera: Camera, pane: Bounds) {
+  return !!intersectBounds(screenArea(area, camera), pane);
+}
 
 export function positionAiBuddy({
   area,
@@ -29,12 +41,7 @@ export function positionAiBuddy({
   size: Size;
   obstacles?: Bounds[];
 }): BuddyPosition {
-  const selection = {
-    x: area.x * camera.zoom + camera.x,
-    y: area.y * camera.zoom + camera.y,
-    width: area.width * camera.zoom,
-    height: area.height * camera.zoom,
-  };
+  const selection = screenArea(area, camera);
   const anchored = {
     x: selection.x + selection.width - size.width,
     y: selection.y + selection.height + gap,
@@ -42,7 +49,7 @@ export function positionAiBuddy({
   };
   if (
     camera.zoom >= 0.93 &&
-    overlaps(selection, pane) &&
+    intersectBounds(selection, pane) &&
     contains(pane, anchored) &&
     !obstacles.some((obstacle) => overlaps(anchored, obstacle))
   ) {

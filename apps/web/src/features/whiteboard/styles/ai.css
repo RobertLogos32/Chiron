@@ -21,6 +21,8 @@
   --ai-text: #eef0f3;
   --ai-muted: #a6afb9;
   --ai-hover: #ffffff0b;
+  --ai-selection-accent: #d8ccfc;
+  --ai-selection-tint: #a88bec24;
   position: fixed;
   z-index: 80;
   display: flex;
@@ -100,6 +102,8 @@
   --ai-text: #303749;
   --ai-muted: #697588;
   --ai-hover: #eef1f5;
+  --ai-selection-accent: #6548a0;
+  --ai-selection-tint: #eee7fa;
   color-scheme: light;
 }
 
@@ -182,6 +186,60 @@
 
 .ai-prompt-status:empty {
   display: none;
+}
+
+.ai-prompt-content.is-write-blocked {
+  position: relative;
+  padding: 11px 14px 13px;
+  border-radius: 17px;
+}
+
+.is-write-blocked .ai-request-text {
+  margin-right: 27px;
+  color: var(--ai-muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.is-write-blocked .ai-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+.ai-write-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.ai-write-warning-icon {
+  display: grid;
+  flex: 0 0 32px;
+  place-items: center;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--ai-selection-tint);
+  color: var(--ai-selection-accent);
+}
+
+.ai-write-warning strong,
+.ai-write-warning span {
+  display: block;
+}
+
+.ai-write-warning strong {
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 21px;
+}
+
+.ai-write-warning span {
+  margin-top: 3px;
+  color: var(--ai-muted);
+  font-size: 13px;
+  line-height: 18px;
 }
 
 .ai-written-reveal {
@@ -415,4 +473,96 @@
   .ai-buddy-spinner {
     animation: none;
   }
+}
+
+/* Answers outside the visible editor wait in the global buddy. */
+.ai-ready-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #4fae7b;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.ai-reply-visual {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 8px;
+  border-radius: 12px;
+}
+
+.ai-prompt-response:has(.ai-reply-visual) {
+  max-height: min(420px, 55dvh);
+}
+
+.ai-failed-formulas {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-failed-formulas code {
+  display: block;
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: var(--ai-hover);
+  color: var(--ai-text);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* Answers on a phone share one scrollable sheet. */
+.ai-answer-stack {
+  position: fixed;
+  right: 12px;
+  bottom: 96px;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(390px, calc(100vw - 24px));
+  max-height: min(55dvh, 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.ai-answer-stack.is-narrow {
+  left: 8px;
+  right: 8px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 172px);
+  width: auto;
+  max-height: min(40dvh, 360px);
+}
+
+.ai-answer-stack .ai-prompt.is-stacked {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+.ai-answer-stack .ai-prompt.is-stacked.is-docked {
+  display: none;
+}
+
+.ai-answer-stack .ai-prompt-content {
+  border-radius: 20px;
+}
+
+.ai-answer-stack .ai-prompt-response {
+  max-height: none;
 }

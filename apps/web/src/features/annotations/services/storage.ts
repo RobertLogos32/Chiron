@@ -1,4 +1,5 @@
 import type { Note } from '@whiteboard/model/types';
+import { isBoardVisual } from '../../whiteboard/model/visual.ts';
 
 type StoragePort = Pick<Storage, 'getItem' | 'setItem'>;
 export type AnnotationPages = Record<number, Note[]>;
@@ -38,6 +39,8 @@ function validNotes(value: unknown): value is Note[] {
       Number.isFinite(note.fontSize) &&
       note.fontSize >= 12 &&
       note.fontSize <= 48 &&
+      (note.visual === undefined ||
+        (note.latex === undefined && isBoardVisual(note.visual))) &&
       (note.width === undefined ||
         (Number.isFinite(note.width) && note.width >= 40 && note.width <= 600))
     );

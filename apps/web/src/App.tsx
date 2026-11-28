@@ -39,7 +39,7 @@ export default function App() {
 
 function StudyApp() {
   const study = useStudyLibrary();
-  const { registerNavigator } = useAiRequests();
+  const { registerNavigator, cancelResources, countResources } = useAiRequests();
   const [workspace, setWorkspace] = useState<WorkspaceState | null>(null);
   const [dialog, setDialog] = useState<StudyDialogState | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -188,8 +188,9 @@ function StudyApp() {
   async function importFiles(files: File[], options: OpenPaneOptions = {}) {
     if (!subject || !files.length) return;
     await run(async () => {
-      const added = await study.addPdfs(subject.id, files);
+      const { resources: added, warning } = await study.addPdfs(subject.id, files);
       if (workspace && added[0]) await openResource(added[0], options);
+      if (warning) setError(warning);
     });
   }
 
@@ -209,6 +210,8 @@ function StudyApp() {
     else if (dialog.kind === 'color')
       study.changeNotebookColor(dialog.target.id, values.color);
     else if (dialog.kind === 'delete') {
+      // Nothing can be written in a deleted notebook or PDF: stop its AI requests first.
+      cancelResources(deletedResourceIds(dialog.target.id, dialog.target.kind));
       await study.remove(dialog.target.id, dialog.target.kind);
       if (dialog.target.kind === 'subject' && workspace?.subjectId === dialog.target.id) {
         setWorkspace(null);
@@ -216,6 +219,14 @@ function StudyApp() {
         setSettingsOpen(false);
       }
     }
+  }
+
+  function deletedResourceIds(id: string, kind: 'subject' | 'resource') {
+    return kind === 'subject'
+      ? study.library.resources
+          .filter((resource) => resource.subjectId === id)
+          .map((resource) => resource.id)
+      : [id];
   }
 
   const editor = !!workspace && !!subject;
@@ -407,6 +418,11 @@ function StudyApp() {
         <StudyDialog
           key={dialog.kind + ('target' in dialog ? dialog.target.id : '')}
           state={dialog}
+          pendingAiRequests={
+            dialog.kind === 'delete'
+              ? countResources(deletedResourceIds(dialog.target.id, dialog.target.kind))
+              : 0
+          }
           onClose={() => setDialog(null)}
           onSave={saveDialog}
         />

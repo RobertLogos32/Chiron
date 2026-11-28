@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { positionAiBuddy } from '../src/features/whiteboard/lib/getAiBuddyPosition.ts';
+import {
+  isAiAreaVisible,
+  positionAiBuddy,
+} from '../src/features/whiteboard/lib/getAiBuddyPosition.ts';
 
 const base = {
   area: { x: 80, y: 120, width: 180, height: 100 },
@@ -11,6 +14,15 @@ const base = {
 };
 const place = (options = {}) => positionAiBuddy({ ...base, ...options });
 const docked = { x: 1171, y: 452, placement: 'page' };
+
+test('una risposta resta visibile finché parte del risultato è nel suo pannello', () => {
+  const { area, camera, pane } = base;
+  assert.equal(isAiAreaVisible(area, { ...camera, y: -181 }, pane), true);
+  assert.equal(isAiAreaVisible(area, { ...camera, y: -182 }, pane), false);
+  assert.equal(isAiAreaVisible(area, { ...camera, x: 385 }, pane), false);
+  assert.equal(isAiAreaVisible(area, { ...camera, zoom: 0.8 }, pane), true);
+  assert.equal(isAiAreaVisible(area, camera, { ...pane, height: 0 }), false);
+});
 
 test('scorrendo in verticale o orizzontale il buddy conserva sempre lo stesso angolo della selezione', () => {
   const first = place();

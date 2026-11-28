@@ -58,7 +58,9 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-Imposta `OPENROUTER_API_KEY` in `apps/agents/.env`, creandolo se manca. Per impostazione predefinita, `openrouter/free` sceglie un modello gratuito con ingresso immagine. Puoi fissare un altro modello compatibile impostando `AI_MODEL`. Il modulo `src/core/agent.py` contiene il flusso LangGraph e `src/server/app.py` espone l’endpoint FastAPI. Avvia il servizio dalla cartella `apps/agents`.
+Configura il provider in `apps/agents/.env`, creandolo se manca. Per usare Groq, imposta `AI_PROVIDER=groq` e `GROQ_API_KEY`. Il modello predefinito è `qwen/qwen3.8-27b`. Per usare OpenRouter, imposta `AI_PROVIDER=openrouter` e `OPENROUTER_API_KEY`. OpenRouter è il provider predefinito e usa `openrouter/free`.
+
+Per scegliere un modello compatibile con il provider, imposta `AI_MODEL`. Se cambi provider, aggiorna o rimuovi eventuali valori personalizzati di `AI_MODEL` e `AI_BASE_URL`. Il modulo `src/core/agent.py` contiene il flusso LangGraph e `src/server/app.py` espone l’endpoint FastAPI. Avvia il servizio dalla cartella `apps/agents`.
 
 ```powershell
 .\.venv\Scripts\python.exe -B -m uvicorn src.server.app:app --host 127.0.0.1 --port 8000

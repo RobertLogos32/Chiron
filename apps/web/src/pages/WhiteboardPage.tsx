@@ -38,7 +38,7 @@ export function WhiteboardPage({
               board.surface.workspaceRef.current,
               selection,
               scene.camera,
-              { pattern: appearance.pattern },
+              { pattern: appearance.pattern, notes: scene.notes },
             );
             board.ai.submit(capture.area, prompt, capture);
           }}

@@ -3,6 +3,7 @@ export type Pattern = 'blank' | 'ruled' | 'grid' | 'dots';
 export type Tool = 'select' | 'pen' | 'highlighter' | 'eraser' | 'text' | 'hand' | 'ai';
 export type Point = { x: number; y: number };
 export type Size = { width: number; height: number };
+export type BoardVisual = Size & { svg: string };
 export type Bounds = Point & Size;
 export type BoardWritePlacement = 'below';
 export type Camera = Point & { zoom: number };
@@ -27,6 +28,7 @@ export type TextNote = {
   fontSize: number;
   width?: number;
   latex?: Size;
+  visual?: BoardVisual;
 };
 
 export type Note = Stroke | TextNote;

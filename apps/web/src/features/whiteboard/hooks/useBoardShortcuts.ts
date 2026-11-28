@@ -13,6 +13,8 @@ type ShortcutActions = {
   undo: () => void;
   redo: () => void;
   changeZoom: (value: number | ((zoom: number) => number)) => void;
+  /** Cancels the AI request selected with the global buddy, if it belongs to this board. */
+  cancelAiRequest?: () => boolean;
 };
 
 export function useBoardShortcuts(actions: ShortcutActions, enabled = true) {
@@ -33,6 +35,7 @@ export function useBoardShortcuts(actions: ShortcutActions, enabled = true) {
       )
         return;
       if (event.key === 'Escape') {
+        actions.cancelAiRequest?.();
         actions.closeOverlays();
         return;
       }

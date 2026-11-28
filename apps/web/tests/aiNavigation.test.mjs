@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   advanceAiRequest,
+  answerLocation,
   revealAiCamera,
 } from '../src/features/whiteboard/lib/aiNavigation.ts';
 
@@ -99,6 +100,15 @@ test('le selezioni sovrapposte sono risultati distinti e restano tutte raggiungi
   const next = advanceAiRequest([top, same], views, { id: 'top', direction: 'up' });
   assert.equal(next.job, same);
   assert.equal(advanceAiRequest([same], views, next.cursor).job, same);
+});
+
+test('il buddy raggiunge anche una risposta fuori vista mentre una richiesta è in attesa', () => {
+  const written = { scope: top.scope, area: { ...top.area, y: 650 } };
+  const ready = { ...top, status: 'success', written };
+  const next = advanceAiRequest([bottom], views, initial, undefined, [ready]);
+  assert.equal(next.job, ready);
+  assert.equal(answerLocation(ready), written);
+  assert.equal(advanceAiRequest([bottom], views, next.cursor, 'up', [ready]).job, bottom);
 });
 
 test('tornare alla selezione ripristina uno zoom leggibile e lascia spazio al buddy', () => {

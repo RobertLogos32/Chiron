@@ -92,13 +92,20 @@ export function parseLibrary(raw: string | null): Library {
 }
 
 export function validatePdfs(files: Pick<File, 'name' | 'size' | 'type'>[]) {
+  // The whole selection is refused together: say so when it holds several files.
+  const group = files.length > 1 ? ' Nessuno dei file selezionati è stato aggiunto.' : '';
   for (const file of files) {
     if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
-      throw new Error(`“${file.name}” non è un PDF. Scegli un file con estensione .pdf.`);
+      throw new Error(
+        `“${file.name}” non è un PDF. Scegli un file con estensione .pdf.${group}`,
+      );
     }
     if (file.size > MAX_PDF_SIZE)
-      throw new Error(`“${file.name}” supera i 50 MB. Scegli un PDF più piccolo.`);
-    if (file.size === 0) throw new Error(`“${file.name}” è vuoto. Scegli un altro PDF.`);
+      throw new Error(
+        `“${file.name}” supera i 50 MB. Scegli un PDF più piccolo.${group}`,
+      );
+    if (file.size === 0)
+      throw new Error(`“${file.name}” è vuoto. Scegli un altro PDF.${group}`);
   }
 }
 

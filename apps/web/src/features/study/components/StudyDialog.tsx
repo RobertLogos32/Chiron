@@ -22,10 +22,12 @@ export type DialogValues = { name: string; color: string; files: File[] };
 
 export function StudyDialog({
   state,
+  pendingAiRequests = 0,
   onClose,
   onSave,
 }: {
   state: StudyDialogState;
+  pendingAiRequests?: number;
   onClose: () => void;
   onSave: (values: DialogValues) => Promise<void>;
 }) {
@@ -138,6 +140,10 @@ export function StudyDialog({
               {state.target.kind === 'subject'
                 ? ' Verranno rimossi anche i suoi PDF e quaderni.'
                 : ''}
+              {pendingAiRequests > 0 &&
+                (pendingAiRequests === 1
+                  ? ' C’è una richiesta AI in corso: verrà annullata e non scriverà nulla.'
+                  : ` Ci sono ${pendingAiRequests} richieste AI in corso: verranno annullate e non scriveranno nulla.`)}
             </p>
           ) : (
             !coloring && (

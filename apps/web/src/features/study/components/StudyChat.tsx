@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useEffect,
   useId,
   useLayoutEffect,
@@ -688,13 +689,19 @@ function ChatText({ text }: { text: string }) {
   });
 }
 function InlineText({ text }: { text: string }) {
-  return text
-    .split(/(\*\*[^*]+\*\*)/g)
-    .map((part, index) =>
-      part.startsWith('**') && part.endsWith('**') ? (
-        <strong key={index}>{part.slice(2, -2)}</strong>
-      ) : (
-        part
-      ),
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, index) => {
+    if (part.length > 4 && part.startsWith('**') && part.endsWith('**'))
+      return <strong key={index}>{part.slice(2, -2)}</strong>;
+    if (index < parts.length - 1) return part;
+    // While a reply streams, a bold marker can be open: hide it and the half-written closing one.
+    const open = part.lastIndexOf('**');
+    if (open < 0) return part.replace(/(?<=\S)\*$/, '');
+    return (
+      <Fragment key={index}>
+        {part.slice(0, open)}
+        <strong>{part.slice(open + 2).replace(/\*$/, '')}</strong>
+      </Fragment>
     );
+  });
 }

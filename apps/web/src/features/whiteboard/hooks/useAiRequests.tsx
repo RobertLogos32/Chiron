@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import type {
-  AiBoardLocation,
+  AiAnswer,
   AiCapture,
   AiJob,
   AiPromptSender,
@@ -18,6 +18,7 @@ import type {
   AiTarget,
 } from '../model/ai';
 import type { Bounds } from '../model/types';
+import { answerLocation } from '../lib/aiNavigation';
 import { prepareAiWrites } from '../lib/prepareAiWrites';
 
 type Requests = {
@@ -33,11 +34,30 @@ type Requests = {
   dismiss: (id: string) => void;
   retry: (id: string) => void;
   register: (scope: string, surface: AiSurface) => () => void;
-  navigation: { jobId: string; scope: string; target?: AiTarget } | null;
-  reveal: (id: string) => Promise<void>;
+  navigation: { jobId: string; scope: string; target?: AiTarget; area?: Bounds } | null;
+  reveal: (id: string, where?: 'answer') => Promise<void>;
   registerNavigator: (navigate: (target: AiTarget) => Promise<boolean>) => () => void;
+  /** The request reached last with the global buddy: Esc on its board cancels it. */
+  selectedId: string | null;
+  cancelSelected: (lockScope: string) => boolean;
+  /** Cancels the requests that would write in a deleted notebook or PDF. */
+  cancelResources: (resourceIds: string[]) => number;
+  countResources: (resourceIds: string[]) => number;
 };
 const Context = createContext<Requests | null>(null);
+
+/** Views of the same notebook or PDF page share a lock scope: `scope` or `scope:pane:id`. */
+export const lockScopeOf = (scope: string) => scope.split(':pane:')[0];
+/** A request still holds its area until its answer is on the board. */
+export const holdsArea = (job: AiJob) => job.status === 'pending' || !!job.deferred;
+
+function belongsTo(job: AiJob, resourceIds: Set<string>) {
+  return [job.target?.resourceId, job.destination?.target?.resourceId].some(
+    (id) => !!id && resourceIds.has(id),
+  );
+}
+
+type WriteOutcome = Partial<AiJob> & { notReady?: boolean };
 
 export function AiRequestsProvider({
   children,
@@ -50,9 +70,11 @@ export function AiRequestsProvider({
   const [surfaces, setSurfaces] = useState(new Map<string, AiSurface>());
   const controllers = useRef(new Map<string, AbortController>());
   const [navigation, setNavigation] = useState<Requests['navigation']>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const navigator = useRef<((target: AiTarget) => Promise<boolean>) | null>(null);
   const latestJobs = useRef(jobs);
   const latestSurfaces = useRef(surfaces);
+  const writing = useRef(new Set<string>());
   latestJobs.current = jobs;
   latestSurfaces.current = surfaces;
   useEffect(
@@ -63,10 +85,78 @@ export function AiRequestsProvider({
     [],
   );
 
+  // Reloading would lose the requests still running and the answers not yet written.
+  const unfinished = jobs.some(holdsArea);
+  useEffect(() => {
+    if (!unfinished) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [unfinished]);
+
+  /** Writes an answer in a view of its notebook or PDF page, if one is open and ready. */
+  const writeAnswer = useCallback(
+    async (job: AiJob, answer: AiAnswer, isCurrent: () => boolean) => {
+      const destination = job.destination!;
+      const lockScope = lockScopeOf(destination.scope);
+      const find = () => {
+        const own = latestSurfaces.current.get(destination.scope);
+        if (own?.write && own.ready !== false) return destination.scope;
+        return [...latestSurfaces.current].find(
+          ([scope, surface]) =>
+            lockScopeOf(scope) === lockScope && surface.write && surface.ready !== false,
+        )?.[0];
+      };
+      const scope = find();
+      if (!scope) return { deferred: true } as WriteOutcome;
+      const surface = latestSurfaces.current.get(scope)!;
+      const prepared = await prepareAiWrites(
+        answer.writes,
+        surface.context === 'pdf' ? 'light' : surface.theme,
+        answer.writeStyle,
+      );
+      if (!isCurrent()) return null;
+      const writer = latestSurfaces.current.get(scope)?.write;
+      if (!writer) return { deferred: true } as WriteOutcome;
+      const writeFailed = prepared.failed.length ? prepared.failed : undefined;
+      if (!prepared.notes.length) return { deferred: false, writeFailed } as WriteOutcome;
+      // The current request can write in its own selection; all other pending
+      // selections on this notebook still reserve their space.
+      const otherLockedAreas = latestJobs.current
+        .filter(
+          (item) =>
+            item.id !== job.id &&
+            holdsArea(item) &&
+            (item.lockScope ?? item.scope) === (job.lockScope ?? job.scope),
+        )
+        .map((item) => item.area);
+      const area = writer(
+        prepared.notes,
+        destination.area,
+        otherLockedAreas,
+        answer.writePlacement,
+      );
+      if (area === undefined) return { deferred: true, notReady: true } as WriteOutcome;
+      if (area === null)
+        return { deferred: false, writeBlocked: true, writeFailed } as WriteOutcome;
+      return {
+        deferred: false,
+        written: { ...destination, scope, area },
+        writeFailed,
+      } as WriteOutcome;
+    },
+    [],
+  );
+
   const run = useCallback(
     async (job: AiJob) => {
       const controller = new AbortController();
       controllers.current.set(job.id, controller);
+      const isCurrent = () =>
+        !controller.signal.aborted && controllers.current.get(job.id) === controller;
       try {
         if (!onSend || !job.capture) throw new Error('AI request is unavailable');
         const answer = await onSend(
@@ -79,69 +169,22 @@ export function AiRequestsProvider({
           },
           controller.signal,
         );
-        if (controller.signal.aborted || controllers.current.get(job.id) !== controller)
-          return;
-        let written: AiBoardLocation | undefined;
-        let writeBlocked = false;
-        let unwritten = answer.writes.map((write) => write.content);
-        const destination = job.destination;
-        const surface = destination && latestSurfaces.current.get(destination.scope);
-        if (unwritten.length && destination && surface?.write) {
-          const prepared = await prepareAiWrites(
-            answer.writes,
-            surface.theme,
-            answer.writeStyle,
-          );
-          if (controller.signal.aborted || controllers.current.get(job.id) !== controller)
-            return;
-          const writer = latestSurfaces.current.get(destination.scope)?.write;
-          if (writer && prepared.notes.length) {
-            // The current request can write in its own selection; all other pending
-            // selections on this notebook still reserve their space.
-            const otherLockedAreas = latestJobs.current
-              .filter(
-                (item) =>
-                  item.id !== job.id &&
-                  item.status === 'pending' &&
-                  (item.lockScope ?? item.scope) === (job.lockScope ?? job.scope),
-              )
-              .map((item) => item.area);
-            const area = writer(
-              prepared.notes,
-              destination.area,
-              otherLockedAreas,
-              answer.writePlacement,
-            );
-            if (area) {
-              written = { ...destination, area };
-              unwritten = prepared.failed;
-            } else {
-              writeBlocked = true;
-            }
-          }
-        }
-        const displayAnswer = {
-          ...answer,
-          response: [answer.response, ...unwritten].filter(Boolean).join('\n\n'),
-          writes: [],
-        };
+        if (!isCurrent()) return;
+        const patch =
+          answer.writes.length && job.destination && !answer.showInReply
+            ? await writeAnswer(job, answer, isCurrent)
+            : {};
+        if (!patch) return;
+        const { notReady: _, ...result } = patch as WriteOutcome;
         setJobs((current) =>
           current.map((item) =>
             item.id === job.id
-              ? {
-                  ...item,
-                  status: 'success',
-                  answer: displayAnswer,
-                  written,
-                  writeBlocked,
-                  capture: undefined,
-                }
+              ? { ...item, ...result, status: 'success', answer, capture: undefined }
               : item,
           ),
         );
       } catch (failure) {
-        if (controller.signal.aborted || controllers.current.get(job.id) !== controller)
-          return;
+        if (!isCurrent()) return;
         const error = failure instanceof Error ? failure.message : undefined;
         setJobs((current) =>
           current.map((item) =>
@@ -153,8 +196,36 @@ export function AiRequestsProvider({
           controllers.current.delete(job.id);
       }
     },
-    [onSend],
+    [onSend, writeAnswer],
   );
+
+  // An answer that arrived while its page or notebook was closed is written when a view returns.
+  const [retryTick, setRetryTick] = useState(0);
+  useEffect(() => {
+    let waiting: ReturnType<typeof setTimeout> | undefined;
+    for (const job of jobs) {
+      if (!job.deferred || !job.answer || writing.current.has(job.id)) continue;
+      writing.current.add(job.id);
+      void writeAnswer(job, job.answer, () =>
+        latestJobs.current.some((item) => item.id === job.id),
+      )
+        .then((outcome) => {
+          if (!outcome) return;
+          const { notReady, ...patch } = outcome as WriteOutcome;
+          if (patch.deferred) {
+            // The view is open but its page is still rendering: try again shortly.
+            if (notReady)
+              waiting ??= setTimeout(() => setRetryTick((tick) => tick + 1), 350);
+            return;
+          }
+          setJobs((current) =>
+            current.map((item) => (item.id === job.id ? { ...item, ...patch } : item)),
+          );
+        })
+        .finally(() => writing.current.delete(job.id));
+    }
+    return () => clearTimeout(waiting);
+  }, [jobs, surfaces, writeAnswer, retryTick]);
 
   const submit = useCallback(
     (
@@ -191,7 +262,32 @@ export function AiRequestsProvider({
     controllers.current.delete(id);
     setJobs((current) => current.filter((job) => job.id !== id));
     setNavigation((current) => (current?.jobId === id ? null : current));
+    setSelectedId((current) => (current === id ? null : current));
   }, []);
+  const cancelSelected = useCallback(
+    (lockScope: string) => {
+      const job = latestJobs.current.find((item) => item.id === selectedId);
+      if (!job || job.status !== 'pending' || (job.lockScope ?? job.scope) !== lockScope)
+        return false;
+      dismiss(job.id);
+      return true;
+    },
+    [dismiss, selectedId],
+  );
+  const countResources = useCallback((resourceIds: string[]) => {
+    const ids = new Set(resourceIds);
+    return latestJobs.current.filter((job) => holdsArea(job) && belongsTo(job, ids))
+      .length;
+  }, []);
+  const cancelResources = useCallback(
+    (resourceIds: string[]) => {
+      const ids = new Set(resourceIds);
+      const cancelled = latestJobs.current.filter((job) => belongsTo(job, ids));
+      cancelled.forEach((job) => dismiss(job.id));
+      return cancelled.length;
+    },
+    [dismiss],
+  );
   const retry = useCallback(
     (id: string) => {
       const job = jobs.find((item) => item.id === id);
@@ -221,13 +317,14 @@ export function AiRequestsProvider({
     },
     [],
   );
-  const reveal = useCallback(async (id: string) => {
-    const job = latestJobs.current.find(
-      (item) => item.id === id && (item.status === 'pending' || !!item.written),
-    );
+  const reveal = useCallback(async (id: string, where?: 'answer') => {
+    const job = latestJobs.current.find((item) => item.id === id);
     if (!job) return;
-    const { scope, target } = job.written ?? job;
-    setNavigation({ jobId: id, scope, target });
+    setSelectedId(id);
+    const answer = where === 'answer' ? answerLocation(job) : undefined;
+    const { scope, target } =
+      answer ?? job.written ?? (job.deferred ? job.destination : undefined) ?? job;
+    setNavigation({ jobId: id, scope, target, area: answer?.area });
     if (target && navigator.current) {
       try {
         if (!(await navigator.current(target)))
@@ -239,9 +336,15 @@ export function AiRequestsProvider({
   }, []);
   useEffect(() => {
     if (!navigation) return;
-    const surface = surfaces.get(navigation.scope);
+    const scope =
+      [...surfaces.keys()].find((key) => key === navigation.scope) ??
+      [...surfaces.keys()].find(
+        (key) => lockScopeOf(key) === lockScopeOf(navigation.scope),
+      );
+    const surface = scope ? surfaces.get(scope) : undefined;
     const element = surface?.anchor.current;
     if (
+      !scope ||
       !surface?.reveal ||
       surface.ready === false ||
       !element?.checkVisibility() ||
@@ -251,14 +354,11 @@ export function AiRequestsProvider({
     let secondFrame = 0;
     const firstFrame = requestAnimationFrame(() => {
       secondFrame = requestAnimationFrame(() => {
-        const job = latestJobs.current.find(
-          (item) =>
-            item.id === navigation.jobId && (item.status === 'pending' || !!item.written),
-        );
+        const job = latestJobs.current.find((item) => item.id === navigation.jobId);
         if (job)
           latestSurfaces.current
-            .get(navigation.scope)
-            ?.reveal?.(job.written?.area ?? job.area);
+            .get(scope)
+            ?.reveal?.(navigation.area ?? job.written?.area ?? job.area);
         setNavigation((current) =>
           current?.jobId === navigation.jobId ? null : current,
         );
@@ -281,6 +381,10 @@ export function AiRequestsProvider({
         navigation,
         reveal,
         registerNavigator,
+        selectedId,
+        cancelSelected,
+        cancelResources,
+        countResources,
       }}
     >
       {children}
@@ -295,13 +399,11 @@ export function useAiRequests() {
 }
 
 export function useAiScope(scope: string, lockScope = scope) {
-  const { jobs, submit } = useAiRequests();
+  const { jobs, submit, cancelSelected } = useAiRequests();
   const areas = useMemo(
     () =>
       jobs
-        .filter(
-          (job) => (job.lockScope ?? job.scope) === lockScope && job.status === 'pending',
-        )
+        .filter((job) => (job.lockScope ?? job.scope) === lockScope && holdsArea(job))
         .map((job) => job.area),
     [jobs, lockScope],
   );
@@ -309,6 +411,7 @@ export function useAiScope(scope: string, lockScope = scope) {
     areas,
     submit: (area: Bounds, prompt: string, capture: AiCapture) =>
       submit(scope, area, prompt, capture, lockScope),
+    cancelSelected: () => cancelSelected(lockScope),
   };
 }
 

@@ -32,12 +32,31 @@ class SelectionGuide(BaseModel):
     regions: list[RegionBounds] = Field(min_length=1, max_length=64)
 
 
+class InkStroke(BaseModel):
+    color: Annotated[str, Field(pattern=r"^#[0-9a-fA-F]{6}$")]
+    points: list[tuple[Coordinate, Coordinate]] = Field(min_length=2, max_length=160)
+
+
+class SelectionSource(BaseModel):
+    text: str = Field(default="", max_length=8000)
+    pdf_text: str = Field(default="", max_length=8000)
+    strokes: list[InkStroke] = Field(default_factory=list, max_length=48)
+
+
+VisualTool = Literal[
+    "write_board_solution", "write_latex", "plot_function", "draw_diagram", "draw_chart", "redraw_graph",
+]
+
+
 class SelectionContext(TypedDict):
     regions: list[RegionBounds]
     can_write: bool
-    write_tool: Literal["write_board_solution", "write_latex"] | None
+    calculate: bool
+    write_tool: VisualTool | None
+    reply_tool: VisualTool | None
     write_placement: Literal["below"] | None
     write_style: WriteStyle
+    paraphrase: bool
 
 
 class RegionExplanation(BaseModel):
@@ -49,9 +68,16 @@ class RegionExplanation(BaseModel):
     explanation: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=600)]
 
 
+class BoardVisual(BaseModel):
+    width: int = Field(gt=0, le=600)
+    height: int = Field(gt=0, le=1600)
+    svg: str = Field(min_length=1, max_length=50_000)
+
+
 class BoardWrite(BaseModel):
-    kind: Literal["text", "latex"]
+    kind: Literal["text", "latex", "visual"]
     content: str
+    visual: BoardVisual | None = None
 
 
 class SelectionAnswer(BaseModel):
@@ -60,6 +86,8 @@ class SelectionAnswer(BaseModel):
     writes: list[BoardWrite] = Field(default_factory=list)
     write_placement: Literal["below"] | None = None
     write_style: WriteStyle = "note"
+    # The writes are shown in the AI card instead of the board, as asked with «nella risposta».
+    show_in_reply: bool = False
 
 
 @tool(response_format="content_and_artifact")

@@ -1,7 +1,7 @@
 import { useRef } from 'react';
-import Konva from 'konva';
+import type Konva from 'konva';
 import { useElementSize } from '../../../shared/hooks/useElementSize';
-import { MIN_BOARD_TEXT_WIDTH, NOTE_FONT } from '../config/defaults';
+import { MIN_BOARD_TEXT_WIDTH } from '../config/defaults';
 import type {
   BoardWritePlacement,
   Bounds,
@@ -12,6 +12,12 @@ import type {
 } from '../model/types';
 import { clampBoardPoint } from '../lib/boardBounds';
 import { boardWriteSpaces } from '../lib/boardWritePlacement';
+import {
+  fitWriteBlock,
+  minimumTextWidth,
+  MIN_VISUAL_SCALE,
+  textSize,
+} from '../lib/fitWriteBlock';
 import { protectLockedNotes } from '../lib/lockedAreas';
 import { useBoardHistory } from './useBoardHistory';
 import { useBoardAppearance } from './useBoardAppearance';
@@ -146,10 +152,21 @@ export function useWhiteboard({
       );
     };
     const minimum = {
-      width: Math.max(...notes.map((note) => note.latex?.width ?? MIN_BOARD_TEXT_WIDTH)),
+      width: Math.max(
+        ...notes.map((note) =>
+          note.visual
+            ? note.visual.width * MIN_VISUAL_SCALE
+            : (note.latex?.width ??
+              Math.max(MIN_BOARD_TEXT_WIDTH, minimumTextWidth(note))),
+        ),
+      ),
       height:
         notes.reduce(
-          (sum, note) => sum + (note.latex?.height ?? note.fontSize * 1.5),
+          (sum, note) =>
+            sum +
+            (note.visual
+              ? note.visual.height * MIN_VISUAL_SCALE
+              : (note.latex?.height ?? note.fontSize * 1.5)),
           0,
         ) +
         (notes.length - 1) * 12,
@@ -197,6 +214,7 @@ export function useWhiteboard({
       undo,
       redo,
       changeZoom,
+      cancelAiRequest: ai.cancelSelected,
     },
     active,
   );
@@ -232,40 +250,5 @@ export function useWhiteboard({
     changeZoom,
     closeAi,
     saveError,
-  };
-}
-
-function fitWriteBlock(notes: TextNote[], space: Bounds) {
-  for (const width of new Set([Math.min(390, space.width), Math.min(600, space.width)])) {
-    const drafts = notes.map((note) => (note.latex ? note : { ...note, width }));
-    const sizes = drafts.map(textSize);
-    const size = {
-      width: Math.max(...sizes.map((item) => item.width)),
-      height: sizes.reduce((sum, item) => sum + item.height, 0) + (sizes.length - 1) * 12,
-    };
-    if (size.width > space.width || size.height > space.height) continue;
-    let y = space.y;
-    const placed = drafts.map((note, index) => {
-      const placedNote = { ...note, x: space.x, y };
-      y += sizes[index].height + 12;
-      return placedNote;
-    });
-    return { notes: placed, bounds: { x: space.x, y: space.y, ...size } };
-  }
-  return null;
-}
-
-function textSize(note: TextNote) {
-  if (note.latex) return note.latex;
-  const text = new Konva.Text({
-    text: note.text,
-    width: note.width ?? 600,
-    fontSize: note.fontSize,
-    fontFamily: NOTE_FONT,
-    lineHeight: 1.5,
-  });
-  return {
-    width: Math.max(1, Math.min(text.width(), text.getTextWidth())),
-    height: text.height(),
   };
 }

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  clipStroke,
   cutStroke,
   eraseNotes,
   noteIntersects,
@@ -19,6 +20,26 @@ const stroke = (points, width = 2) => ({
 });
 const almost = (actual, expected) =>
   assert.ok(Math.abs(actual - expected) < 1e-7, `${actual} should equal ${expected}`);
+
+test('il ritaglio AI mantiene solo i tratti dentro la selezione, anche quando rientrano', () => {
+  const segments = clipStroke([-10, 2, 5, 2, 15, 2, 15, 8, 5, 8], {
+    x: 0,
+    y: 0,
+    width: 10,
+    height: 10,
+  });
+  assert.deepEqual(segments, [
+    [
+      { x: 0, y: 2 },
+      { x: 5, y: 2 },
+      { x: 10, y: 2 },
+    ],
+    [
+      { x: 10, y: 8 },
+      { x: 5, y: 8 },
+    ],
+  ]);
+});
 
 test('the eraser splits a sparse stroke even when neither endpoint is touched', () => {
   const original = stroke([0, 0, 100, 0]);
